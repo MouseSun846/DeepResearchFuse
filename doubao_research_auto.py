@@ -671,6 +671,22 @@ class DoubaoResearchAuto:
                                     print("-" * 50)
                                     print(text[:200] + "..." if len(text) > 200 else text)
                                     print("-" * 50)
+                                    
+                                    # 保存完整结果到本地文件
+                                    try:
+                                        # 生成时间戳文件名
+                                        timestamp = time.strftime("%Y%m%d_%H%M%S")
+                                        file_name = f"research_result_{timestamp}.txt"
+                                        file_path = os.path.join(self.workspace_dir, file_name)
+                                        
+                                        # 保存完整文本内容
+                                        with open(file_path, 'w', encoding='utf-8') as f:
+                                            f.write(text)
+                                        
+                                        print(f"💾 研究结果已保存至: {file_path}")
+                                    except Exception as save_e:
+                                        print(f"⚠️ 保存结果失败: {str(save_e)}")
+                                    
                                     return True
                     except:
                         continue
