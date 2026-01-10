@@ -251,8 +251,11 @@ class DoubaoResearchAuto:
         try:
             print("\n📝 准备输入研究主题...")
 
-            # 使用配置中的研究主题
+            # 使用配置中的研究主题，确保不包含斜杠
             topic = config.RESEARCH_TOPIC
+            # 清理主题中的斜杠，确保不包含命令符号
+            topic = topic.replace("/", "")
+            print(f"📋 研究主题（已清理斜杠）: {topic}")
 
             # 输入框定位策略
             input_strategies = [
@@ -374,6 +377,25 @@ class DoubaoResearchAuto:
                 print("❌ 重新查找输入框失败")
                 return False
 
+            # 确保重新聚焦输入框
+            self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", input_element)
+            time.sleep(0.5)
+            input_element.click()
+            time.sleep(0.5)
+            
+            # 再次清空输入框，确保输入主题前内容为空
+            print("🗑️  清空输入框内容...")
+            if input_element.tag_name in ["textarea", "input"]:
+                input_element.clear()
+            else:
+                # contenteditable 元素
+                if sys.platform == 'darwin':
+                    input_element.send_keys(Keys.COMMAND, 'a')
+                    input_element.send_keys(Keys.DELETE)
+                else:
+                    input_element.send_keys(Keys.CONTROL, 'a')
+                    input_element.send_keys(Keys.DELETE)
+
             # 输入研究主题
             print("⌨️  输入研究主题...")
             input_element.send_keys(topic)
@@ -429,21 +451,46 @@ class DoubaoResearchAuto:
                 except:
                     continue
 
+            # 检查是否有"直接开始研究"按钮
+            if not send_button:
+                print("🔍 查找'直接开始研究'按钮...")
+                research_button_strategies = [
+                    "//button[contains(text(), '直接开始研究')]",
+                    "//span[contains(text(), '直接开始研究')]",
+                    "//div[contains(text(), '直接开始研究')]",
+                    "//button[contains(@class, 'research') and contains(text(), '开始')]",
+                    "//*[contains(@class, 'start-research')]",
+                    "//*[contains(@class, 'research-start')]"
+                ]
+                
+                for strategy in research_button_strategies:
+                    try:
+                        elements = self.driver.find_elements(By.XPATH, strategy)
+                        for elem in elements:
+                            if elem.is_displayed() and elem.is_enabled():
+                                send_button = elem
+                                print("✅ 找到'直接开始研究'按钮")
+                                break
+                        if send_button:
+                            break
+                    except:
+                        continue
+            
             if send_button:
-                # 点击发送
+                # 点击发送或开始研究按钮
                 try:
                     ActionChains(self.driver).move_to_element(send_button).click().perform()
-                    print("🎯 成功点击发送")
+                    print("🎯 成功点击按钮")
                     time.sleep(1)
                     return True
                 except:
                     # JavaScript 点击
                     self.driver.execute_script("arguments[0].click();", send_button)
-                    print("🎯 使用 JavaScript 发送成功")
+                    print("🎯 使用 JavaScript 点击成功")
                     return True
             else:
                 # 尝试快捷键
-                print("⚠️ 未找到发送按钮，尝试快捷键...")
+                print("⚠️ 未找到发送按钮或开始研究按钮，尝试快捷键...")
 
                 # 尝试 Enter
                 active_element = self.driver.switch_to.active_element
