@@ -589,17 +589,7 @@ class DoubaoResearchAuto:
             print("\n⏳ 等待研究结果生成...")
             print("🔄 这可能需要几分钟，请耐心等待...")
 
-            # 停止生成按钮检测（研究进行中的标志）
-            stop_generating_indicators = [
-                "//button[contains(text(), '停止生成')]",
-                "//span[contains(text(), '停止生成')]",
-                "//div[contains(text(), '停止生成')]",
-                "//button[contains(@class, 'stop') and contains(text(), '生成')]",
-                "//*[contains(@class, 'stop-generating')]",
-                "//*[contains(@class, 'generating') and contains(text(), '停止')]",
-            ]
-
-            # 正常发送按钮检测（研究完成的标志）
+            # 语音输入按钮检测（研究完成的标志）- 参考test_button_detection.py的检测方式
             send_button_indicators = [
                 "//div[@data-testid='asr_btn' and @data-state='inactive']",  # 特定测试ID的按钮
                 "//div[@data-testid='asr_btn']",  # 忽略状态的asr按钮
@@ -608,10 +598,6 @@ class DoubaoResearchAuto:
                 "//div[contains(@class, 'bg-dbx-fill-trans-20') and contains(@class, 'cursor-pointer')]",  # 带背景色的可点击元素
                 "//div[contains(@class, 'size-36') and contains(@class, 'rounded-full')]",  # 特定尺寸的圆形元素
                 "//div[.//svg[@width='24' and @height='24']]",  # 包含特定尺寸SVG的元素
-                "//button[contains(@class, 'rounded-full') and contains(@class, 'flex')]",  # 圆形发送按钮
-                "//button[contains(@class, 'rounded-full')][.//svg]",  # 带SVG图标的圆形按钮
-                "//button[contains(text(), '发送')]",
-                "//button[@type='submit']",
             ]
 
             # 结果区域检测（仅在研究完成后检查）
@@ -626,79 +612,36 @@ class DoubaoResearchAuto:
 
             start_time = time.time()
             max_wait = 7200  # 2小时
+            check_interval = 2  # 检查间隔
 
-            # 阶段1：等待研究开始（检测停止生成按钮出现）
-            print("🔍 等待研究开始...")
-            research_started = False
-            while time.time() - start_time < max_wait:
-                time.sleep(3)
-                elapsed = int(time.time() - start_time)
-
-                for stop_indicator in stop_generating_indicators:
-                    try:
-                        stop_elements = self.driver.find_elements(By.XPATH, stop_indicator)
-                        for stop_elem in stop_elements:
-                            if stop_elem.is_displayed():
-                                print(f"✅ 研究开始（等待时间: {elapsed}秒）")
-                                print("🔄 研究进行中...")
-                                research_started = True
-                                break
-                        if research_started:
-                            break
-                    except:
-                        continue
-
-                if research_started:
-                    break
-
-                print(f"⏳ 等待研究开始... ({elapsed}秒)")
-
-            if not research_started:
-                print("\n⚠️ 未检测到研究开始，可能已经自动完成")
-                # 直接进入结果检测阶段
-
-            # 阶段2：等待研究结束（检测停止生成按钮消失，正常发送按钮出现）
+            # 简化监控流程：只要检测到语音输入按钮出现，就认为研究完成
             print("🔍 等待研究完成...")
             research_finished = False
-            check_interval = 2  # 缩短检查间隔，提高响应速度
             while time.time() - start_time < max_wait:
                 time.sleep(check_interval)
                 elapsed = int(time.time() - start_time)
 
-                # 更精确地检查停止生成按钮是否消失
-                stop_button_present = False
-                for stop_indicator in stop_generating_indicators:
+                # 检查语音输入按钮是否出现
+                send_button_present = False
+                for send_indicator in send_button_indicators:
                     try:
-                        stop_elements = self.driver.find_elements(By.XPATH, stop_indicator)
-                        visible_stop_elements = [elem for elem in stop_elements if elem.is_displayed()]
-                        if visible_stop_elements:
-                            stop_button_present = True
+                        send_elements = self.driver.find_elements(By.XPATH, send_indicator)
+                        for send_elem in send_elements:
+                            if send_elem.is_displayed():
+                                # 对于div类型的按钮，只需要检查显示状态
+                                if send_elem.tag_name == 'div' or (send_elem.tag_name == 'button' and send_elem.is_enabled()):
+                                    send_button_present = True
+                                    break
+                        if send_button_present:
                             break
                     except Exception as e:
                         continue
 
-                if not stop_button_present:
-                    # 更精确地检查正常发送按钮是否出现
-                    send_button_present = False
-                    for send_indicator in send_button_indicators:
-                        try:
-                            send_elements = self.driver.find_elements(By.XPATH, send_indicator)
-                            for send_elem in send_elements:
-                                if send_elem.is_displayed():
-                                    # 对于div类型的按钮，只需要检查显示状态
-                                    if send_elem.tag_name == 'div' or (send_elem.tag_name == 'button' and send_elem.is_enabled()):
-                                        send_button_present = True
-                                        break
-                            if send_button_present:
-                                break
-                        except Exception as e:
-                            continue
-
-                    if send_button_present:
-                        print(f"✅ 研究完成（总等待时间: {elapsed}秒）")
-                        print("🔍 开始检测结果区域...")
-                        research_finished = True
-                        break
+                if send_button_present:
+                    print(f"✅ 研究完成（总等待时间: {elapsed}秒）")
+                    print("🔍 开始检测结果区域...")
+                    research_finished = True
+                    break
 
                 # 每30秒输出一次状态，避免日志过多
                 if elapsed % 30 == 0:
@@ -786,7 +729,8 @@ class DoubaoResearchAuto:
 
         finally:
             self.cleanup(success)
-            return success
+        
+        return success
 
     def cleanup(self, success):
         """清理资源"""
