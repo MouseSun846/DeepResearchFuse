@@ -599,6 +599,16 @@ class DoubaoResearchAuto:
                 "//div[contains(@class, 'message') and not(contains(@class, 'user'))]",
             ]
 
+            # 停止生成按钮检测（研究进行中的标志）
+            stop_generating_indicators = [
+                "//button[contains(text(), '停止生成')]",
+                "//span[contains(text(), '停止生成')]",
+                "//div[contains(text(), '停止生成')]",
+                "//button[contains(@class, 'stop') and contains(text(), '生成')]",
+                "//*[contains(@class, 'stop-generating')]",
+                "//*[contains(@class, 'generating') and contains(text(), '停止')]",
+            ]
+
             start_time = time.time()
             max_wait = 300  # 5分钟
 
@@ -606,6 +616,25 @@ class DoubaoResearchAuto:
                 time.sleep(3)
                 elapsed = int(time.time() - start_time)
 
+                # 检查是否有停止生成按钮（表示研究正在进行）
+                is_generating = False
+                for stop_indicator in stop_generating_indicators:
+                    try:
+                        stop_elements = self.driver.find_elements(By.XPATH, stop_indicator)
+                        for stop_elem in stop_elements:
+                            if stop_elem.is_displayed():
+                                is_generating = True
+                                break
+                        if is_generating:
+                            break
+                    except:
+                        continue
+
+                if is_generating:
+                    print(f"🔄 研究正在进行中... ({elapsed}秒)")
+                    continue
+
+                # 检查结果区域
                 for indicator in result_indicators:
                     try:
                         elements = self.driver.find_elements(By.XPATH, indicator)
@@ -684,18 +713,10 @@ class DoubaoResearchAuto:
         """清理资源"""
         try:
             if success:
-                print("\n🔚 任务完成！是否关闭浏览器？")
-                print("(输入 y 关闭，其他键保持打开)")
+                print("\n🔚 任务完成！")
             else:
-                print("\n💔 任务失败！是否关闭浏览器？")
-                print("(输入 y 关闭，其他键保持打开以调试)")
-
-            choice = input("请选择: ").strip().lower()
-            if choice == 'y':
-                self.driver.quit()
-                print("\n👋 浏览器已关闭")
-            else:
-                print("\n🌐 浏览器保持打开")
+                print("\n💔 任务失败！")
+            print("🌐 浏览器保持打开")
         except:
             pass
 
@@ -703,6 +724,14 @@ if __name__ == "__main__":
     # 创建实例并运行
     doubao = DoubaoResearchAuto()
     success = doubao.run()
+
+    # 任务完成后保持程序运行，等待用户按键
+    print("\n📌 按任意键退出程序...")
+    try:
+        # 使用 input() 等待用户按键
+        input()
+    except KeyboardInterrupt:
+        print("\n👋 用户中断，程序退出")
 
     if not success:
         sys.exit(1)
