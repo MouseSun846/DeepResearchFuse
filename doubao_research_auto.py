@@ -408,6 +408,74 @@ class DoubaoResearchAuto:
             print(f"❌ 输入主题失败: {str(e)}")
             return False
 
+    def wait_and_click_start_research(self):
+        """等待并点击开始研究按钮"""
+        try:
+            print("\n🔍 等待开始研究按钮出现...")
+            
+            # 开始研究按钮定位策略
+            start_research_strategies = [
+                "//button[contains(text(), '直接开始研究')]",
+                "//button[contains(text(), '立即开始研究')]",
+                "//span[contains(text(), '直接开始研究')]",
+                "//div[contains(text(), '直接开始研究')]",
+                "//button[contains(text(), '开始研究')]",
+                "//span[contains(text(), '开始研究')]",
+                "//div[contains(text(), '开始研究')]",
+                "//button[contains(@class, 'research') and contains(text(), '开始')]",
+                "//button[contains(@class, 'research') and contains(text(), '直接')]",
+                "//*[contains(@class, 'start-research')]",
+                "//*[contains(@class, 'research-start')]",
+                "//button[contains(@class, 'primary') and contains(text(), '研究')]",
+                "//button[contains(@class, 'confirm') and contains(text(), '研究')]",
+                "//button[contains(@class, 'rounded-full') and contains(text(), '研究')]",
+            ]
+            
+            start_time = time.time()
+            max_wait = 60  # 1分钟超时
+            start_research_button = None
+            
+            while time.time() - start_time < max_wait:
+                for strategy in start_research_strategies:
+                    try:
+                        elements = self.driver.find_elements(By.XPATH, strategy)
+                        for elem in elements:
+                            if elem.is_displayed() and elem.is_enabled():
+                                start_research_button = elem
+                                print("✅ 找到'开始研究'按钮")
+                                break
+                        if start_research_button:
+                            break
+                    except:
+                        continue
+                
+                if start_research_button:
+                    break
+                    
+                print("⌛ 等待开始研究按钮出现...")
+                time.sleep(3)
+            
+            if not start_research_button:
+                print("⚠️ 未找到'开始研究'按钮，可能已经自动开始")
+                return True
+            
+            # 点击开始研究按钮
+            print("🎯 点击'开始研究'按钮...")
+            try:
+                ActionChains(self.driver).move_to_element(start_research_button).click().perform()
+                print("✅ 成功点击'开始研究'按钮")
+            except:
+                # JavaScript 点击
+                self.driver.execute_script("arguments[0].click();", start_research_button)
+                print("✅ 使用 JavaScript 点击'开始研究'按钮成功")
+            
+            time.sleep(2)  # 等待研究开始
+            return True
+            
+        except Exception as e:
+            print(f"⚠️ 处理开始研究按钮时异常: {str(e)}")
+            return True  # 这不是致命错误，继续执行
+
     def send_request(self):
         """发送研究请求"""
         try:
@@ -590,7 +658,10 @@ class DoubaoResearchAuto:
             if not self.send_request():
                 return False
 
-            # 6. 监控结果
+            # 6. 等待并点击开始研究按钮
+            self.wait_and_click_start_research()
+
+            # 7. 监控结果
             self.monitor_results()
 
             print("\n" + "=" * 60)
