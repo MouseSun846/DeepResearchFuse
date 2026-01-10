@@ -602,8 +602,12 @@ class DoubaoResearchAuto:
             # 正常发送按钮检测（研究完成的标志）
             send_button_indicators = [
                 "//div[@data-testid='asr_btn' and @data-state='inactive']",  # 特定测试ID的按钮
+                "//div[@data-testid='asr_btn']",  # 忽略状态的asr按钮
                 "//div[contains(@class, 'container-PEnDS2') and contains(@class, 'rounded-full')]",  # 容器元素
                 "//div[@data-trigger-type='hover']",  # 悬停触发元素
+                "//div[contains(@class, 'bg-dbx-fill-trans-20') and contains(@class, 'cursor-pointer')]",  # 带背景色的可点击元素
+                "//div[contains(@class, 'size-36') and contains(@class, 'rounded-full')]",  # 特定尺寸的圆形元素
+                "//div[.//svg[@width='24' and @height='24']]",  # 包含特定尺寸SVG的元素
                 "//button[contains(@class, 'rounded-full') and contains(@class, 'flex')]",  # 圆形发送按钮
                 "//button[contains(@class, 'rounded-full')][.//svg]",  # 带SVG图标的圆形按钮
                 "//button[contains(text(), '发送')]",
