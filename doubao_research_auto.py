@@ -589,16 +589,6 @@ class DoubaoResearchAuto:
             print("\n⏳ 等待研究结果生成...")
             print("🔄 这可能需要几分钟，请耐心等待...")
 
-            # 结果区域检测
-            result_indicators = [
-                "//div[contains(@class, 'assistant')]",
-                "//div[contains(@class, 'bot')]",
-                "//div[contains(@class, 'response')]",
-                "//div[contains(@class, 'answer')]",
-                "//div[contains(@class, 'result')]",
-                "//div[contains(@class, 'message') and not(contains(@class, 'user'))]",
-            ]
-
             # 停止生成按钮检测（研究进行中的标志）
             stop_generating_indicators = [
                 "//button[contains(text(), '停止生成')]",
@@ -609,32 +599,114 @@ class DoubaoResearchAuto:
                 "//*[contains(@class, 'generating') and contains(text(), '停止')]",
             ]
 
+            # 正常发送按钮检测（研究完成的标志）
+            send_button_indicators = [
+                "//button[contains(@class, 'rounded-full') and contains(@class, 'flex')]",  # 圆形发送按钮
+                "//button[contains(@class, 'rounded-full')][.//svg]",  # 带SVG图标的圆形按钮
+                "//button[contains(text(), '发送')]",
+                "//button[@type='submit']",
+            ]
+
+            # 结果区域检测（仅在研究完成后检查）
+            result_indicators = [
+                "//div[contains(@class, 'assistant')]",
+                "//div[contains(@class, 'bot')]",
+                "//div[contains(@class, 'response')]",
+                "//div[contains(@class, 'answer')]",
+                "//div[contains(@class, 'result')]",
+                "//div[contains(@class, 'message') and not(contains(@class, 'user'))]",
+            ]
+
             start_time = time.time()
             max_wait = 300  # 5分钟
 
+            # 阶段1：等待研究开始（检测停止生成按钮出现）
+            print("🔍 等待研究开始...")
+            research_started = False
             while time.time() - start_time < max_wait:
                 time.sleep(3)
                 elapsed = int(time.time() - start_time)
 
-                # 检查是否有停止生成按钮（表示研究正在进行）
-                is_generating = False
                 for stop_indicator in stop_generating_indicators:
                     try:
                         stop_elements = self.driver.find_elements(By.XPATH, stop_indicator)
                         for stop_elem in stop_elements:
                             if stop_elem.is_displayed():
-                                is_generating = True
+                                print(f"✅ 研究开始（等待时间: {elapsed}秒）")
+                                print("🔄 研究进行中...")
+                                research_started = True
                                 break
-                        if is_generating:
+                        if research_started:
                             break
                     except:
                         continue
 
-                if is_generating:
-                    print(f"🔄 研究正在进行中... ({elapsed}秒)")
-                    continue
+                if research_started:
+                    break
 
-                # 检查结果区域
+                print(f"⏳ 等待研究开始... ({elapsed}秒)")
+
+            if not research_started:
+                print("\n⚠️ 未检测到研究开始，可能已经自动完成")
+                # 直接进入结果检测阶段
+
+            # 阶段2：等待研究结束（检测停止生成按钮消失，正常发送按钮出现）
+            print("🔍 等待研究完成...")
+            research_finished = False
+            while time.time() - start_time < max_wait:
+                time.sleep(3)
+                elapsed = int(time.time() - start_time)
+
+                # 检查停止生成按钮是否消失
+                stop_button_present = False
+                for stop_indicator in stop_generating_indicators:
+                    try:
+                        stop_elements = self.driver.find_elements(By.XPATH, stop_indicator)
+                        for stop_elem in stop_elements:
+                            if stop_elem.is_displayed():
+                                stop_button_present = True
+                                break
+                        if stop_button_present:
+                            break
+                    except:
+                        continue
+
+                if not stop_button_present:
+                    # 检查正常发送按钮是否出现
+                    send_button_present = False
+                    for send_indicator in send_button_indicators:
+                        try:
+                            send_elements = self.driver.find_elements(By.XPATH, send_indicator)
+                            for send_elem in send_elements:
+                                if send_elem.is_displayed() and send_elem.is_enabled():
+                                    send_button_present = True
+                                    break
+                            if send_button_present:
+                                break
+                        except:
+                            continue
+
+                    if send_button_present:
+                        print(f"✅ 研究完成（总等待时间: {elapsed}秒）")
+                        print("🔍 开始检测结果区域...")
+                        research_finished = True
+                        break
+
+                print(f"🔄 研究进行中... ({elapsed}秒)")
+
+            if not research_finished:
+                print("\n⚠️ 等待超时，但研究可能仍在进行")
+                print("💡 请手动查看页面结果")
+                return True
+
+            # 阶段3：检测结果区域（仅在研究完成后）
+            print("⏳ 正在检测研究结果...")
+            result_check_start = time.time()
+            result_max_wait = 60  # 1分钟检测结果
+
+            while time.time() - result_check_start < result_max_wait:
+                time.sleep(2)
+
                 for indicator in result_indicators:
                     try:
                         elements = self.driver.find_elements(By.XPATH, indicator)
@@ -642,7 +714,7 @@ class DoubaoResearchAuto:
                             if elem.is_displayed():
                                 text = elem.text.strip()
                                 if text and len(text) > 10:  # 有实际内容
-                                    print(f"\n✅ 检测到研究结果（等待时间: {elapsed}秒）")
+                                    print("\n✅ 检测到研究结果")
                                     print("-" * 50)
                                     print(text[:200] + "..." if len(text) > 200 else text)
                                     print("-" * 50)
@@ -650,11 +722,8 @@ class DoubaoResearchAuto:
                     except:
                         continue
 
-                print(f"⏳ 等待中... ({elapsed}秒)")
-
-            print("\n⚠️ 等待超时，但研究可能仍在进行")
-            print("💡 请手动查看页面结果")
-            return True
+            print("\n⚠️ 结果检测超时")
+            print("💡 研究已完成，请手动查看页面结果")
 
         except Exception as e:
             print(f"⚠️ 等待结果时异常: {str(e)}")
