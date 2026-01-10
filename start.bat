@@ -1,0 +1,1 @@
+ccr code --dangerously-skip-permissions
