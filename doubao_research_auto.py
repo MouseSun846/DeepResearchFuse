@@ -601,6 +601,9 @@ class DoubaoResearchAuto:
 
             # 正常发送按钮检测（研究完成的标志）
             send_button_indicators = [
+                "//div[@data-testid='asr_btn' and @data-state='inactive']",  # 特定测试ID的按钮
+                "//div[contains(@class, 'container-PEnDS2') and contains(@class, 'rounded-full')]",  # 容器元素
+                "//div[@data-trigger-type='hover']",  # 悬停触发元素
                 "//button[contains(@class, 'rounded-full') and contains(@class, 'flex')]",  # 圆形发送按钮
                 "//button[contains(@class, 'rounded-full')][.//svg]",  # 带SVG图标的圆形按钮
                 "//button[contains(text(), '发送')]",
@@ -653,37 +656,38 @@ class DoubaoResearchAuto:
             # 阶段2：等待研究结束（检测停止生成按钮消失，正常发送按钮出现）
             print("🔍 等待研究完成...")
             research_finished = False
+            check_interval = 2  # 缩短检查间隔，提高响应速度
             while time.time() - start_time < max_wait:
-                time.sleep(3)
+                time.sleep(check_interval)
                 elapsed = int(time.time() - start_time)
 
-                # 检查停止生成按钮是否消失
+                # 更精确地检查停止生成按钮是否消失
                 stop_button_present = False
                 for stop_indicator in stop_generating_indicators:
                     try:
                         stop_elements = self.driver.find_elements(By.XPATH, stop_indicator)
-                        for stop_elem in stop_elements:
-                            if stop_elem.is_displayed():
-                                stop_button_present = True
-                                break
-                        if stop_button_present:
+                        visible_stop_elements = [elem for elem in stop_elements if elem.is_displayed()]
+                        if visible_stop_elements:
+                            stop_button_present = True
                             break
-                    except:
+                    except Exception as e:
                         continue
 
                 if not stop_button_present:
-                    # 检查正常发送按钮是否出现
+                    # 更精确地检查正常发送按钮是否出现
                     send_button_present = False
                     for send_indicator in send_button_indicators:
                         try:
                             send_elements = self.driver.find_elements(By.XPATH, send_indicator)
                             for send_elem in send_elements:
-                                if send_elem.is_displayed() and send_elem.is_enabled():
-                                    send_button_present = True
-                                    break
+                                if send_elem.is_displayed():
+                                    # 对于div类型的按钮，只需要检查显示状态
+                                    if send_elem.tag_name == 'div' or (send_elem.tag_name == 'button' and send_elem.is_enabled()):
+                                        send_button_present = True
+                                        break
                             if send_button_present:
                                 break
-                        except:
+                        except Exception as e:
                             continue
 
                     if send_button_present:
@@ -692,7 +696,9 @@ class DoubaoResearchAuto:
                         research_finished = True
                         break
 
-                print(f"🔄 研究进行中... ({elapsed}秒)")
+                # 每30秒输出一次状态，避免日志过多
+                if elapsed % 30 == 0:
+                    print(f"🔄 研究进行中... ({elapsed}秒)")
 
             if not research_finished:
                 print("\n⚠️ 等待超时，但研究可能仍在进行")
