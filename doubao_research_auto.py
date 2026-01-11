@@ -732,10 +732,13 @@ class DoubaoResearchAuto:
                                             
                                             # 选择Markdown格式
                                             markdown_indicators = [
-                                                "//div[contains(text(), 'Markdown')]",
-                                                "//span[contains(text(), 'Markdown')]",
-                                                "//button[contains(text(), 'Markdown')]",
-                                                "//*[contains(@class, 'markdown') and contains(text(), 'Markdown')]",
+                                                "//div[@data-testid='popover_select_option_item' and @data-value='markdown']",
+                                                "//div[@data-value='markdown']",
+                                                "//div[.//div[text()='Markdown']]",
+                                                "//div[text()='Markdown']/ancestor::div[1]",
+                                                "//div[text()='Markdown']/ancestor::div[2]",
+                                                "//div[text()='Markdown']",
+                                                "//*[text()='Markdown']",
                                             ]
                                             
                                             markdown_option = None
@@ -743,18 +746,23 @@ class DoubaoResearchAuto:
                                                 try:
                                                     markdown_elements = self.driver.find_elements(By.XPATH, markdown_indicator)
                                                     for markdown_elem in markdown_elements:
-                                                        if markdown_elem.is_displayed() and markdown_elem.is_enabled():
-                                                            markdown_option = markdown_elem
-                                                            print("✅ 找到Markdown格式选项")
-                                                            break
+                                                        if markdown_elem.is_displayed():
+                                                            # 检查元素是否可交互
+                                                            try:
+                                                                self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", markdown_elem)
+                                                                self.driver.execute_script("arguments[0].click();", markdown_elem)
+                                                                print("✅ 找到并点击了Markdown格式选项")
+                                                                markdown_option = markdown_elem
+                                                                break
+                                                            except:
+                                                                continue
                                                     if markdown_option:
                                                         break
                                                 except Exception as e:
+                                                    print(f"🔍 尝试选择器 {markdown_indicator} 时出错: {str(e)}")
                                                     continue
                                             
                                             if markdown_option:
-                                                # 点击Markdown选项
-                                                self.driver.execute_script("arguments[0].click();", markdown_option)
                                                 print("🔘 选择Markdown格式")
                                                 
                                                 # 等待下载完成
