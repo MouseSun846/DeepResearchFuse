@@ -9,6 +9,7 @@ from selenium.webdriver.chrome.options import Options
 import time
 import sys
 import os
+import shutil
 
 # Import config
 import config
@@ -667,20 +668,100 @@ class DoubaoResearchAuto:
                                     print(text[:200] + "..." if len(text) > 200 else text)
                                     print("-" * 50)
                                     
-                                    # 保存完整结果到本地文件
+                                    # 尝试下载Markdown格式的结果
                                     try:
-                                        # 生成时间戳文件名
-                                        timestamp = time.strftime("%Y%m%d_%H%M%S")
-                                        file_name = f"research_result_{timestamp}.txt"
-                                        file_path = os.path.join(self.workspace_dir, file_name)
+                                        print("📥 尝试下载Markdown格式结果...")
                                         
-                                        # 保存完整文本内容
-                                        with open(file_path, 'w', encoding='utf-8') as f:
-                                            f.write(text)
+                                        # 点击下载按钮
+                                        download_indicators = [
+                                            "//button[contains(text(), '下载')]",
+                                            "//div[contains(text(), '下载')]",
+                                            "//span[contains(text(), '下载')]",
+                                            "//button[contains(@class, 'download')]",
+                                            "//*[contains(@class, 'download') and contains(text(), '下载')]",
+                                        ]
                                         
-                                        print(f"💾 研究结果已保存至: {file_path}")
-                                    except Exception as save_e:
-                                        print(f"⚠️ 保存结果失败: {str(save_e)}")
+                                        download_button = None
+                                        for download_indicator in download_indicators:
+                                            try:
+                                                download_elements = self.driver.find_elements(By.XPATH, download_indicator)
+                                                for download_elem in download_elements:
+                                                    if download_elem.is_displayed() and download_elem.is_enabled():
+                                                        download_button = download_elem
+                                                        print("✅ 找到下载按钮")
+                                                        break
+                                                if download_button:
+                                                    break
+                                            except Exception as e:
+                                                continue
+                                        
+                                        if download_button:
+                                            # 点击下载按钮
+                                            self.driver.execute_script("arguments[0].click();", download_button)
+                                            print("🔘 点击下载按钮")
+                                            time.sleep(2)  # 等待弹出选择菜单
+                                            
+                                            # 选择Markdown格式
+                                            markdown_indicators = [
+                                                "//div[contains(text(), 'Markdown')]",
+                                                "//span[contains(text(), 'Markdown')]",
+                                                "//button[contains(text(), 'Markdown')]",
+                                                "//*[contains(@class, 'markdown') and contains(text(), 'Markdown')]",
+                                            ]
+                                            
+                                            markdown_option = None
+                                            for markdown_indicator in markdown_indicators:
+                                                try:
+                                                    markdown_elements = self.driver.find_elements(By.XPATH, markdown_indicator)
+                                                    for markdown_elem in markdown_elements:
+                                                        if markdown_elem.is_displayed() and markdown_elem.is_enabled():
+                                                            markdown_option = markdown_elem
+                                                            print("✅ 找到Markdown格式选项")
+                                                            break
+                                                    if markdown_option:
+                                                        break
+                                                except Exception as e:
+                                                    continue
+                                            
+                                            if markdown_option:
+                                                # 点击Markdown选项
+                                                self.driver.execute_script("arguments[0].click();", markdown_option)
+                                                print("🔘 选择Markdown格式")
+                                                
+                                                # 等待下载完成
+                                                time.sleep(10)
+                                                
+                                                # 从Downloads目录拷贝到workspace
+                                                try:
+                                                    downloads_dir = "C:\\Users\\GYL\\Downloads"
+                                                    
+                                                    # 获取最新下载的文件
+                                                    files = [os.path.join(downloads_dir, f) for f in os.listdir(downloads_dir) 
+                                                             if os.path.isfile(os.path.join(downloads_dir, f))]
+                                                    if not files:
+                                                        print("⚠️ Downloads目录中没有文件")
+                                                        return True
+                                                    
+                                                    # 按修改时间排序，获取最新的文件
+                                                    latest_file = max(files, key=os.path.getmtime)
+                                                    
+                                                    # 生成目标文件名
+                                                    timestamp = time.strftime("%Y%m%d_%H%M%S")
+                                                    target_file_name = f"research_result_{timestamp}.md"
+                                                    target_path = os.path.join(self.workspace_dir, target_file_name)
+                                                    
+                                                    # 拷贝文件
+                                                    shutil.copy2(latest_file, target_path)
+                                                    print(f"📁 文件已从Downloads拷贝到: {target_path}")
+                                                    print(f"📄 原始文件位置: {latest_file}")
+                                                except Exception as copy_e:
+                                                    print(f"⚠️ 拷贝文件失败: {str(copy_e)}")
+                                            else:
+                                                print("⚠️ 未找到Markdown格式选项")
+                                        else:
+                                            print("⚠️ 未找到下载按钮")
+                                    except Exception as download_e:
+                                        print(f"⚠️ 下载过程失败: {str(download_e)}")
                                     
                                     return True
                     except:
