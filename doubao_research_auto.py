@@ -672,7 +672,36 @@ class DoubaoResearchAuto:
                                     try:
                                         print("📥 尝试下载Markdown格式结果...")
                                         
-                                        # 点击下载按钮
+                                        # 1. 先点击卡片以显示侧边栏
+                                        card_indicators = [
+                                            "//div[@data-testid='doc_card']",
+                                            "//div[@class='card-QqKfCx flow-product-card']",
+                                            "//div[contains(@class, 'card-tVgn4t')]",
+                                        ]
+                                        
+                                        card_element = None
+                                        for card_indicator in card_indicators:
+                                            try:
+                                                card_elements = self.driver.find_elements(By.XPATH, card_indicator)
+                                                for card_elem in card_elements:
+                                                    if card_elem.is_displayed() and card_elem.is_enabled():
+                                                        card_element = card_elem
+                                                        print("✅ 找到研究结果卡片")
+                                                        break
+                                                if card_element:
+                                                    break
+                                            except Exception as e:
+                                                continue
+                                        
+                                        if card_element:
+                                            # 点击卡片
+                                            self.driver.execute_script("arguments[0].click();", card_element)
+                                            print("🔘 点击研究结果卡片")
+                                            time.sleep(10)  # 等待侧边栏完全加载
+                                        else:
+                                            print("⚠️ 未找到研究结果卡片，尝试直接查找下载按钮")
+                                        
+                                        # 2. 点击下载按钮
                                         download_indicators = [
                                             "//button[contains(text(), '下载')]",
                                             "//div[contains(text(), '下载')]",
