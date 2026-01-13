@@ -393,7 +393,10 @@ class DoubaoResearchAuto:
             pass
 
 if __name__ == "__main__":
-    doubao = DoubaoResearchAuto(headless=False)
+    # 从环境变量读取 headless 配置，默认为 False (本地运行通常需要界面)
+    # 在 Docker 中可以通过 ENV HEADLESS=true 设置
+    headless_env = os.environ.get("HEADLESS", "false").lower() == "true"
+    doubao = DoubaoResearchAuto(headless=headless_env)
     success = doubao.run()
     print("\n📌 按任意键退出程序...")
     try:

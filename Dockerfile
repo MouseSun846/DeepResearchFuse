@@ -84,6 +84,7 @@ USER appuser
 
 # Set environment variables to production
 ENV PYTHON_ENV=production 
+ENV HEADLESS=true
 ENV HOME=/home/appuser
 
 # Start the application
