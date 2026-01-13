@@ -117,12 +117,44 @@ class QwenResearchAuto:
                     login_modal.screenshot(path=screenshot_path)
                     print(f"✅ 登录弹窗截图已保存: {screenshot_path}")
                     
-                    # 这里我们只负责截图，后续可能需要用户扫码或手动操作
-                    # 等待一段时间让用户有机会操作，或者直接返回
-                    print("⏳ 等待用户完成登录操作 (30秒)...")
-                    self.page.wait_for_timeout(30000)
+                    # 监控登录状态和二维码失效
+                    print("\n⏳ 等待登录完成...")
+                    max_wait = 300  # 5分钟超时
+                    start_time = time.time()
                     
-                    return True
+                    while time.time() - start_time < max_wait:
+                        self.page.wait_for_timeout(2000)
+                        
+                        # 检查是否登录成功（弹窗消失）
+                        if not login_modal.is_visible():
+                            print("✅ 登录成功！")
+                            return True
+                        
+                        # 检查二维码是否失效 (查找"立即刷新")
+                        refresh_btn = self.page.get_by_text("立即刷新").first
+                        
+                        if refresh_btn.is_visible():
+                            print("🔄 二维码已失效，尝试刷新...")
+                            try:
+                                refresh_btn.click()
+                                print("🔘 点击刷新按钮...")
+                                self.page.wait_for_timeout(2000)
+                                
+                                # 重新截图
+                                timestamp = time.strftime("%Y%m%d_%H%M%S")
+                                screenshot_path = os.path.join(images_dir, f"qwen_login_modal_refreshed_{timestamp}.png")
+                                login_modal.screenshot(path=screenshot_path)
+                                print(f"📸 新二维码已保存: {screenshot_path}")
+                                
+                            except Exception as e:
+                                print(f"⚠️ 刷新二维码失败: {e}")
+                        
+                        elapsed = int(time.time() - start_time)
+                        if elapsed % 30 == 0:
+                            print(f"⏳ 等待登录中... ({elapsed}秒)")
+                    
+                    print("⚠️ 登录等待超时")
+                    return False
                 else:
                     print("⚠️ 未找到符合条件的登录弹窗")
                     return False
