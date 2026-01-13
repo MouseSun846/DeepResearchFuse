@@ -240,9 +240,11 @@ class QwenResearchAuto:
             
             start_time = time.time()
             max_wait = 7200  # 2小时超时
+            stop_btn_appeared = False
             
             while time.time() - start_time < max_wait:
-                self.page.wait_for_timeout(10000)                
+                self.page.wait_for_timeout(5000)
+                
                 # 查找 "终止任务" 按钮
                 stop_btn = self.page.get_by_text("终止任务").first
                 
@@ -256,16 +258,21 @@ class QwenResearchAuto:
                     continue
                 
                 if stop_btn.is_visible():
+                    stop_btn_appeared = True
                     # 仍在生成中
                     elapsed = int(time.time() - start_time)
                     if elapsed % 30 == 0:
                         print(f"⏳ 研究进行中... ({elapsed}秒)")
                 else:
-                    # "终止任务" 按钮消失，且没有 "直接开始研究" 按钮，说明完成
-                    print(f"✅ 研究完成！(总耗时: {int(time.time() - start_time)}秒)")
-                    return True
-                
-                self.page.wait_for_timeout(5000)
+                    if stop_btn_appeared:
+                        # "终止任务" 按钮曾经出现过，现在消失了，说明完成
+                        print(f"✅ 研究完成！(总耗时: {int(time.time() - start_time)}秒)")
+                        return True
+                    else:
+                        # "终止任务" 按钮还没出现，可能还在准备中
+                        elapsed = int(time.time() - start_time)
+                        if elapsed % 10 == 0:
+                            print(f"⏳ 等待任务开始... ({elapsed}秒)")
             
             print("⚠️ 等待超时，研究可能仍在进行或已失败")
             return False
