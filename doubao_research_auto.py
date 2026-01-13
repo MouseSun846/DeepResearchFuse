@@ -315,8 +315,12 @@ class DoubaoResearchAuto:
         """输入研究主题"""
         try:
             print("\n🔄 刷新页面...")
+            self.page.wait_for_timeout(3000)
             self.page.reload(wait_until="networkidle")
-            self.page.wait_for_timeout(10000)
+            self.page.wait_for_timeout(5000)
+            self.page.reload(wait_until="networkidle")
+            self.page.wait_for_timeout(3000)
+
             
             print("\n📝 准备输入研究主题...")
             topic = config.RESEARCH_TOPIC.replace("/", "")
