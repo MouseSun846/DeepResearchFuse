@@ -267,8 +267,22 @@ class DoubaoResearchAuto:
                         if qr_image.is_visible():
                             qr_image.click()
                         else:
-                            refresh_area = self.page.locator('xpath=//*[@id="semi-modal-body"]/div/div/div/div/div/div[2]/div[1]/div/div[2]')
-                            refresh_area.click()
+                            # 使用 JS 脚本点击刷新区域
+                            self.page.evaluate('''
+                                () => {
+                                    const result = document.evaluate(
+                                        '//*[@id="semi-modal-body"]/div/div/div/div/div/div[2]/div[1]/div/div[2]',
+                                        document,
+                                        null,
+                                        XPathResult.FIRST_ORDERED_NODE_TYPE,
+                                        null
+                                    );
+                                    const element = result.singleNodeValue;
+                                    if (element) {
+                                        element.click();
+                                    }
+                                }
+                            ''')
                         self.page.wait_for_timeout(2000)
                         qr_saved = self._capture_qr_code(images_dir)
                         if qr_saved:
@@ -368,7 +382,7 @@ class DoubaoResearchAuto:
         try:
             print("\n📤 准备发送研究请求...")
             # 查找发送按钮
-            send_btn = self.page.locator("button.rounded-full.flex, button:has(svg), text=发送").first
+            send_btn = self.page.locator('[data-testid="chat_input_send_button"]').first
             
             if send_btn.is_visible():
                 send_btn.click()
