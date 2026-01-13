@@ -59,7 +59,7 @@ docker build -t deepsearchfuse:v1 .
 - **Downloads**: 存储下载的 Markdown 结果
 
 ```bash
-docker run --rm -it --user root -v ./workspace/chrome_profile:/app/workspace/chrome_profile -v ./workspace/downloads:/data/download deepsearchfuse:v1
+docker run --rm -it --user root -v ./workspace/chrome_profile:/app/workspace/chrome_profile -v ./workspace/downloads:/data/download  -v ./workspace/images:/app/workspace/images deepsearchfuse:v1
 ```
 
 > [!NOTE]
