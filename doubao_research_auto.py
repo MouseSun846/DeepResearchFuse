@@ -54,9 +54,11 @@ class DoubaoResearchAuto:
                     "--disable-blink-features=AutomationControlled",
                     "--no-sandbox",
                     "--disable-dev-shm-usage",
-                    "--disable-gpu"
+                    "--disable-gpu",
+                    "--window-size=1920,1080",
+                    "--start-maximized"
                 ],
-                viewport={"width": 1920, "height": 1080},
+                viewport=None,  # 让浏览器窗口决定视口大小
                 ignore_default_args=["--enable-automation"],
                 downloads_path=config.SYSTEM_DOWNLOADS_DIR
             )
