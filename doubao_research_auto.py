@@ -99,20 +99,37 @@ class DoubaoResearchAuto:
     def _capture_qr_code(self, images_dir):
         """截图二维码并保存到指定目录"""
         try:
-            # 定位二维码容器
-            qr_container = self.page.locator("#semi-modal-body > div > div > div")
+            # 等待二维码容器或内容加载
+            # 豆包的二维码通常是一个 canvas 或 img
+            qr_selectors = [
+                "#semi-modal-body > div > div",
+            ]
             
-            if qr_container.is_visible():
+            qr_element = None
+            for selector in qr_selectors:
+                element = self.page.locator(selector).first
+                if element.is_visible():
+                    qr_element = element
+                    break
+            
+            if qr_element:
                 # 生成文件名
                 timestamp = time.strftime("%Y%m%d_%H%M%S")
                 qr_path = os.path.join(images_dir, f"qr_code_{timestamp}.png")
                 
                 # 截图并保存
-                qr_container.screenshot(path=qr_path)
+                qr_element.screenshot(path=qr_path)
                 print(f"📸 二维码截图已保存: {qr_path}")
                 return qr_path
             else:
-                print("⚠️ 二维码容器不可见")
+                print("⚠️ 未找到可见的二维码元素")
+                # 截图整个模态框作为参考
+                modal = self.page.locator("#semi-modal-body").first
+                if modal.is_visible():
+                    timestamp = time.strftime("%Y%m%d_%H%M%S")
+                    modal_path = os.path.join(images_dir, f"modal_debug_{timestamp}.png")
+                    modal.screenshot(path=modal_path)
+                    print(f"📸 已截图整个登录框用于调试: {modal_path}")
                 return None
         except Exception as e:
             print(f"⚠️ 二维码截图失败: {str(e)}")
@@ -155,21 +172,73 @@ class DoubaoResearchAuto:
                 if login_button.is_visible():
                     print("🔘 点击登录按钮...")
                     login_button.click()
-                    self.page.wait_for_timeout(3000)
                     
-                    # 点击显示二维码按钮
-                    print("🔘 点击显示二维码按钮...")
-                    qr_show_btn = self.page.locator('[data-testid="qrcode_switcher"]')
-                    if qr_show_btn.is_visible():
-                        qr_show_btn.click()
+                    # 等待登录模态框出现
+                    try:
+                        self.page.locator("#semi-modal-body").wait_for(state="visible", timeout=10000)
+                        print("✅ 登录模态框已显示")
+                    except:
+                        print("⚠️ 登录模态框未在预期时间内显示")
+
+                    self.page.wait_for_timeout(2000)
+                    
+                    # 尝试多种可能的选择器
+                    # 使用 XPath 定位并通过 JS 点击二维码切换按钮
+                    qr_xpath = '//*[@id="semi-modal-body"]/div/div/div/div/div/div[1]/div'
+                    clicked = False
+                    
+                    try:
+                        print(f"🔘 使用 XPath 定位二维码切换按钮: {qr_xpath}")
+                        # 通过 XPath 定位元素
+                        qr_show_btn = self.page.locator(f"xpath={qr_xpath}")
+                        qr_show_btn.wait_for(state="attached", timeout=5000)
+                        
+                        # 使用 JS 脚本点击
+                        print("🔘 使用 JS 脚本点击...")
+                        self.page.evaluate('''
+                            () => {
+                                const result = document.evaluate(
+                                    '//*[@id="semi-modal-body"]/div/div/div/div/div/div[1]/div',
+                                    document,
+                                    null,
+                                    XPathResult.FIRST_ORDERED_NODE_TYPE,
+                                    null
+                                );
+                                const element = result.singleNodeValue;
+                                if (element) {
+                                    element.click();
+                                    return true;
+                                }
+                                return false;
+                            }
+                        ''')
+                        
                         self.page.wait_for_timeout(2000)
-                        print("✅ 已点击显示二维码按钮")
+                        clicked = True
+                        print("✅ 已触发显示二维码操作")
+                    except Exception as e:
+                        print(f"⚠️ 点击二维码切换按钮失败: {e}")
+                    
+                    if clicked:
+                        print("⏳ 等待二维码显示...")
+                        try:
+                            # 等待二维码元素出现
+                            self.page.locator("#semi-modal-body canvas, #semi-modal-body img").first.wait_for(state="visible", timeout=10000)
+                            print("✅ 二维码已显示")
+                        except:
+                            print("⚠️ 等待二维码显示超时")
+                    
+                    if not clicked:
+                        print("⚠️ 未找到或无法点击二维码切换按钮，尝试直接检测二维码...")
+                        if self.page.locator("#semi-modal-body canvas, #semi-modal-body img").first.is_visible():
+                            print("ℹ️ 二维码似乎已经显示")
                 
                 # 确保 images 目录存在
                 images_dir = os.path.join(self.workspace_dir, "images")
                 os.makedirs(images_dir, exist_ok=True)
                 
                 # 截图二维码并保存
+                print("📸 正在截取二维码...")
                 qr_saved = self._capture_qr_code(images_dir)
                 
                 if qr_saved:
