@@ -886,7 +886,7 @@ class DoubaoResearchAuto:
                                                 
                                                 # 从Downloads目录拷贝到workspace
                                                 try:
-                                                    downloads_dir = "C:\\Users\\GYL\\Downloads"
+                                                    downloads_dir = config.SYSTEM_DOWNLOADS_DIR
                                                     
                                                     # 获取最新下载的文件
                                                     files = [os.path.join(downloads_dir, f) for f in os.listdir(downloads_dir) 
