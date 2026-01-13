@@ -19,6 +19,9 @@ CHROME_PROFILE_DIR = os.path.join(WORKSPACE_DIR, "chrome_profile")
 # 下载目录配置（可选）
 DOWNLOAD_DIR = os.path.join(WORKSPACE_DIR, "downloads")
 
+# 系统下载目录配置（从环境变量获取用户目录）
+SYSTEM_DOWNLOADS_DIR = os.path.join(os.environ.get("USERPROFILE", "C:\\Users\\Default"), "Downloads")
+
 # 日志目录配置（可选）
 LOG_DIR = os.path.join(WORKSPACE_DIR, "logs")
 
