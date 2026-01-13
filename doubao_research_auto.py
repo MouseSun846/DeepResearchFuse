@@ -3,6 +3,7 @@ import time
 import sys
 import os
 import shutil
+import random
 
 # Import config
 import config
@@ -318,9 +319,6 @@ class DoubaoResearchAuto:
             self.page.wait_for_timeout(3000)
             self.page.reload(wait_until="networkidle")
             self.page.wait_for_timeout(5000)
-            self.page.reload(wait_until="networkidle")
-            self.page.wait_for_timeout(3000)
-
             
             print("\n📝 准备输入研究主题...")
             topic = config.RESEARCH_TOPIC.replace("/", "")
@@ -334,32 +332,47 @@ class DoubaoResearchAuto:
                 print("❌ 未找到输入框")
                 return False
 
-            # 聚焦并输入
-            input_element.scroll_into_view_if_needed()
-            input_element.click()
+            # 模拟人类操作：移动鼠标并点击
+            box = input_element.bounding_box()
+            if box:
+                self.page.mouse.move(box['x'] + box['width'] / 2, box['y'] + box['height'] / 2)
+                self.page.wait_for_timeout(random.randint(500, 1000))
+                self.page.mouse.down()
+                self.page.wait_for_timeout(random.randint(50, 150))
+                self.page.mouse.up()
+            else:
+                input_element.click()
             
-            # 清空并输入 "/"
+            # 清空并输入 "/" (模拟打字)
             print("⌨️  输入 '/' 命令...")
-            input_element.fill("/")
-            self.page.wait_for_timeout(5000)
+            input_element.clear()
+            self.page.wait_for_timeout(random.randint(500, 1000))
+            input_element.type("/", delay=random.randint(100, 300))
+            self.page.wait_for_timeout(3000)
 
             # 查找并点击 "深入研究" 选项
             print("🔍 查找 '深入研究' 选项...")
             research_option = self.page.locator("text=深入研究").first
             if research_option.is_visible():
-                research_option.click()
+                # 移动鼠标到选项并点击
+                box = research_option.bounding_box()
+                if box:
+                    self.page.mouse.move(box['x'] + box['width'] / 2, box['y'] + box['height'] / 2, steps=5)
+                    self.page.wait_for_timeout(random.randint(300, 800))
+                    self.page.mouse.click(box['x'] + box['width'] / 2, box['y'] + box['height'] / 2)
+                else:
+                    research_option.click()
                 print("✅ 选择 '深入研究' 选项")
-                self.page.wait_for_timeout(5000)
+                self.page.wait_for_timeout(3000)
             else:
                 print("⚠️  未找到 '深入研究' 选项，直接输入主题")
 
-            # 重新定位输入框并输入主题
-            input_element = self.page.locator(input_selector).first
-            input_element.click()
-            input_element.fill(topic)
+            # 输入主题 (模拟打字)
+            print(f"⌨️  输入主题: {topic}")
+            input_element.type(topic, delay=random.randint(50, 150))
 
             print(f"✅ 成功输入主题")
-            self.page.wait_for_timeout(5000)
+            self.page.wait_for_timeout(random.randint(2000, 4000))
             return True
 
         except Exception as e:
@@ -394,7 +407,18 @@ class DoubaoResearchAuto:
             send_btn = self.page.locator('[data-testid="chat_input_send_button"]').first
             
             if send_btn.is_visible():
-                send_btn.click()
+                # 模拟鼠标移动到发送按钮
+                box = send_btn.bounding_box()
+                if box:
+                    # 平滑移动鼠标
+                    self.page.mouse.move(box['x'] + box['width'] / 2, box['y'] + box['height'] / 2, steps=10)
+                    self.page.wait_for_timeout(random.randint(500, 1500))
+                    self.page.mouse.down()
+                    self.page.wait_for_timeout(random.randint(50, 150))
+                    self.page.mouse.up()
+                else:
+                    send_btn.click()
+                    
                 print("🎯 成功点击发送按钮")
                 self.page.wait_for_timeout(1000)
                 return True
