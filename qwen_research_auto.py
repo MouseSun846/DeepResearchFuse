@@ -62,6 +62,9 @@ class QwenResearchAuto:
                 downloads_path=config.SYSTEM_DOWNLOADS_DIR
             )
             
+            # 授予剪贴板权限
+            self.context.grant_permissions(["clipboard-read", "clipboard-write"])
+            
             self.page = self.context.pages[0] if self.context.pages else self.context.new_page()
             print("✅ 浏览器启动成功")
 
@@ -238,7 +241,7 @@ class QwenResearchAuto:
             send_btn_selector = 'div[class*="operateBtn-"]:has(span[data-icon-type="qwpcicon-sendChat"])'
             
             start_time = time.time()
-            max_wait = 1200  # 20分钟超时
+            max_wait = 7200  # 20分钟超时
             
             while time.time() - start_time < max_wait:
                 send_btn = self.page.locator(send_btn_selector).first
@@ -269,6 +272,78 @@ class QwenResearchAuto:
             print(f"⚠️ 等待结果时异常: {str(e)}")
             return False
 
+    def save_results(self):
+        """保存研究结果"""
+        try:
+            print("\n💾 准备保存研究结果...")
+            
+            # 刷新页面
+            print("🔄 刷新页面...")
+            self.page.reload()
+            self.page.wait_for_timeout(5000)
+            
+            # 查找下载图标按钮
+            # data-icon-type="qwpcicon-down"
+            print("🔍 查找下载按钮...")
+            download_btn = self.page.locator('span[data-icon-type="qwpcicon-down"]').first
+            
+            if download_btn.is_visible():
+                # 移动鼠标到按钮中心
+                box = download_btn.bounding_box()
+                if box:
+                    print("🖱️ 移动鼠标到下载按钮...")
+                    self.page.mouse.move(box['x'] + box['width'] / 2, box['y'] + box['height'] / 2)
+                    self.page.wait_for_timeout(2000)
+                    
+                    # 等待弹窗出现
+                    print("⏳ 等待选项弹窗...")
+                    # 查找 "复制为Markdown" 选项
+                    copy_option = self.page.get_by_text("复制为Markdown").first
+                    
+                    if copy_option.is_visible():
+                        print("🔘 点击 '复制为Markdown'...")
+                        copy_option.click()
+                        self.page.wait_for_timeout(1000)
+                        
+                        # 获取剪贴板内容
+                        print("📋 读取剪贴板内容...")
+                        content = self.page.evaluate("navigator.clipboard.readText()")
+                        
+                        if content:
+                            # 保存到文件
+                            timestamp = time.strftime("%Y%m%d_%H%M%S")
+                            filename = f"qwen_research_{timestamp}.md"
+                            
+                            # 优先使用 SYSTEM_DOWNLOADS_DIR，如果不存在则使用 DOWNLOAD_DIR
+                            save_dir = config.SYSTEM_DOWNLOADS_DIR
+                            if not os.path.exists(save_dir):
+                                try:
+                                    os.makedirs(save_dir)
+                                except:
+                                    save_dir = config.DOWNLOAD_DIR
+                                    os.makedirs(save_dir, exist_ok=True)
+                            
+                            filepath = os.path.join(save_dir, filename)
+                            with open(filepath, "w", encoding="utf-8") as f:
+                                f.write(content)
+                            
+                            print(f"✅ 结果已保存到: {filepath}")
+                            return True
+                        else:
+                            print("⚠️ 剪贴板为空")
+                    else:
+                        print("⚠️ 未找到 '复制为Markdown' 选项")
+                else:
+                    print("⚠️ 无法获取下载按钮位置")
+            else:
+                print("⚠️ 未找到下载按钮")
+                
+            return False
+            
+        except Exception as e:
+            print(f"❌ 保存结果失败: {str(e)}")
+            return False
+
     def run(self):
         """运行完整流程"""
         success = False
@@ -281,6 +356,7 @@ class QwenResearchAuto:
             if not self.check_and_handle_login(): return False
             if not self.input_topic(): return False
             self.wait_for_completion()
+            self.save_results()
             
             # 这里暂时只实现到登录，后续可以添加研究功能
             print("\n✅ 登录流程执行完毕")
