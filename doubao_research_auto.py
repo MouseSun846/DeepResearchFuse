@@ -261,29 +261,34 @@ class DoubaoResearchAuto:
                     # 检查二维码是否失效
                     qr_image = self.page.locator('[data-testid="qrcode_image"]')
                     expired_indicator = self.page.locator('xpath=//*[@id="semi-modal-body"]/div/div/div/div/div/div[2]/div[1]/div/div[2]')
+                    
                     if expired_indicator.is_visible() and "失效" in (expired_indicator.text_content() or ""):
-                        print("🔄 二维码已失效，点击刷新...")
-                        # 直接点击二维码图片区域刷新
-                        try:
-                            # 使用 JS 点击 qrcode_image 元素
-                            self.page.evaluate('''
-                                () => {
-                                    const qrImage = document.querySelector('[data-testid="qrcode_image"]');
-                                    if (qrImage) {
-                                        qrImage.click();
-                                        console.log("Clicked qrcode_image element");
-                                        return true;
-                                    }
-                                    return false;
-                                }
-                            ''')
-                        except Exception as e:
-                            print(f"⚠️ JS 点击失败: {e}")
-                            # 备用：使用 Playwright 点击
-                            if qr_image.is_visible():
-                                qr_image.click(force=True)
+                        print("🔄 二维码已失效，尝试刷新...")
                         
-                        self.page.wait_for_timeout(3000)  # 等待二维码刷新
+                        refreshed = False
+                        # 策略1: 获取二维码中心坐标并点击 (最可靠)
+                        try:
+                            if qr_image.is_visible():
+                                box = qr_image.bounding_box()
+                                if box:
+                                    x = box['x'] + box['width'] / 2
+                                    y = box['y'] + box['height'] / 2
+                                    print(f"📍 点击二维码中心坐标: ({x}, {y})")
+                                    self.page.mouse.click(x, y)
+                                    refreshed = True
+                        except Exception as e:
+                            print(f"⚠️ 坐标点击失败: {e}")
+
+                        # 策略2: 如果坐标点击失败，尝试点击遮罩层
+                        if not refreshed:
+                            try:
+                                print("🔘 尝试点击失效遮罩层...")
+                                self.page.locator('xpath=//*[@id="semi-modal-body"]/div/div/div/div/div/div[2]/div[1]/div/div[1]').click(force=True)
+                                refreshed = True
+                            except Exception as e:
+                                print(f"⚠️ 遮罩层点击失败: {e}")
+
+                        self.page.wait_for_timeout(3000)
                         qr_saved = self._capture_qr_code(images_dir)
                         if qr_saved:
                             print(f"📱 新二维码已保存到: {qr_saved}")
@@ -311,7 +316,7 @@ class DoubaoResearchAuto:
         try:
             print("\n🔄 刷新页面...")
             self.page.reload(wait_until="networkidle")
-            self.page.wait_for_timeout(3000)
+            self.page.wait_for_timeout(10000)
             
             print("\n📝 准备输入研究主题...")
             topic = config.RESEARCH_TOPIC.replace("/", "")
@@ -332,7 +337,7 @@ class DoubaoResearchAuto:
             # 清空并输入 "/"
             print("⌨️  输入 '/' 命令...")
             input_element.fill("/")
-            self.page.wait_for_timeout(3000)
+            self.page.wait_for_timeout(5000)
 
             # 查找并点击 "深入研究" 选项
             print("🔍 查找 '深入研究' 选项...")
@@ -340,7 +345,7 @@ class DoubaoResearchAuto:
             if research_option.is_visible():
                 research_option.click()
                 print("✅ 选择 '深入研究' 选项")
-                self.page.wait_for_timeout(2000)
+                self.page.wait_for_timeout(5000)
             else:
                 print("⚠️  未找到 '深入研究' 选项，直接输入主题")
 
@@ -350,7 +355,7 @@ class DoubaoResearchAuto:
             input_element.fill(topic)
 
             print(f"✅ 成功输入主题")
-            self.page.wait_for_timeout(2000)
+            self.page.wait_for_timeout(5000)
             return True
 
         except Exception as e:
