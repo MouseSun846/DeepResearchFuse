@@ -27,6 +27,16 @@ class DoubaoResearchAuto:
         """设置Playwright驱动"""
         try:
             print("🔧 正在启动 Playwright...")
+            
+            # 清理 Chromium 锁文件，防止 "profile in use" 错误
+            lock_file = os.path.join(config.CHROME_PROFILE_DIR, "SingletonLock")
+            if os.path.exists(lock_file):
+                print(f"🧹 发现旧的锁文件，正在清理: {lock_file}")
+                try:
+                    os.remove(lock_file)
+                except Exception as e:
+                    print(f"⚠️ 清理锁文件失败: {e}")
+
             self.playwright = sync_playwright().start()
             
             # 启动浏览器，使用用户数据目录以持久化登录
