@@ -259,11 +259,16 @@ class DoubaoResearchAuto:
                         return True
                     
                     # 检查二维码是否失效
-                    expired_indicator = self.page.locator("#semi-modal-body div.cover-kIII0c p")
-                    if expired_indicator.is_visible() and "失效" in expired_indicator.text_content():
+                    qr_image = self.page.locator('[data-testid="qrcode_image"]')
+                    expired_indicator = self.page.locator('xpath=//*[@id="semi-modal-body"]/div/div/div/div/div/div[2]/div[1]/div/div[2]')
+                    if expired_indicator.is_visible() and "失效" in (expired_indicator.text_content() or ""):
                         print("🔄 二维码已失效，点击刷新...")
-                        refresh_area = self.page.locator("#semi-modal-body div.cover-kIII0c")
-                        refresh_area.click()
+                        # 点击二维码区域刷新
+                        if qr_image.is_visible():
+                            qr_image.click()
+                        else:
+                            refresh_area = self.page.locator('xpath=//*[@id="semi-modal-body"]/div/div/div/div/div/div[2]/div[1]/div/div[2]')
+                            refresh_area.click()
                         self.page.wait_for_timeout(2000)
                         qr_saved = self._capture_qr_code(images_dir)
                         if qr_saved:
