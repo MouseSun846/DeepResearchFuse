@@ -235,35 +235,37 @@ class QwenResearchAuto:
             print("\n⏳ 等待研究完成...")
             print("🔄 这可能需要较长时间，请耐心等待...")
             
-            # 定位发送按钮
-            # 查找包含特定icon的按钮容器
-            # 结构: <div class="disabled-xxx operateBtn-xxx"><span data-icon-type="qwpcicon-sendChat">...</span></div>
-            send_btn_selector = 'div[class*="operateBtn-"]:has(span[data-icon-type="qwpcicon-sendChat"])'
+            # 给一点时间让"终止任务"按钮出现
+            self.page.wait_for_timeout(5000)
             
             start_time = time.time()
-            max_wait = 7200  # 20分钟超时
+            max_wait = 7200  # 2小时超时
             
             while time.time() - start_time < max_wait:
-                send_btn = self.page.locator(send_btn_selector).first
+                self.page.wait_for_timeout(10000)                
+                # 查找 "终止任务" 按钮
+                stop_btn = self.page.get_by_text("终止任务").first
                 
-                if send_btn.is_visible():
-                    # 获取class属性
-                    class_attr = send_btn.get_attribute("class") or ""
-                    
-                    # 检查是否包含 disabled- 前缀的类名
-                    if "disabled-" in class_attr:
-                        # 仍在生成中
-                        elapsed = int(time.time() - start_time)
-                        if elapsed % 30 == 0:
-                            print(f"⏳ 研究进行中... ({elapsed}秒)")
-                    else:
-                        # disabled 类名消失，说明完成
-                        print(f"✅ 研究完成！(总耗时: {int(time.time() - start_time)}秒)")
-                        return True
+                # 查找 "直接开始研究" 按钮
+                start_research_btn = self.page.get_by_text("直接开始研究").first
+                
+                if start_research_btn.is_visible():
+                    print("🔘 发现 '直接开始研究' 按钮，点击...")
+                    start_research_btn.click()
+                    self.page.wait_for_timeout(2000)
+                    continue
+                
+                if stop_btn.is_visible():
+                    # 仍在生成中
+                    elapsed = int(time.time() - start_time)
+                    if elapsed % 30 == 0:
+                        print(f"⏳ 研究进行中... ({elapsed}秒)")
                 else:
-                    print("⚠️ 未找到发送按钮，可能页面结构发生变化")
+                    # "终止任务" 按钮消失，且没有 "直接开始研究" 按钮，说明完成
+                    print(f"✅ 研究完成！(总耗时: {int(time.time() - start_time)}秒)")
+                    return True
                 
-                self.page.wait_for_timeout(2000)
+                self.page.wait_for_timeout(5000)
             
             print("⚠️ 等待超时，研究可能仍在进行或已失败")
             return False
