@@ -29,13 +29,19 @@ class DoubaoResearchAuto:
             print("🔧 正在启动 Playwright...")
             
             # 清理 Chromium 锁文件，防止 "profile in use" 错误
-            lock_file = os.path.join(config.CHROME_PROFILE_DIR, "SingletonLock")
-            if os.path.exists(lock_file):
-                print(f"🧹 发现旧的锁文件，正在清理: {lock_file}")
-                try:
-                    os.remove(lock_file)
-                except Exception as e:
-                    print(f"⚠️ 清理锁文件失败: {e}")
+            import glob
+            for lock_pattern in ["SingletonLock", "SingletonCookie", "SingletonSocket"]:
+                for lock_file in glob.glob(os.path.join(config.CHROME_PROFILE_DIR, lock_pattern)):
+                    if os.path.lexists(lock_file):
+                        print(f"🧹 发现旧的锁文件，正在清理: {lock_file}")
+                        try:
+                            if os.path.islink(lock_file) or os.path.isfile(lock_file):
+                                os.remove(lock_file)
+                            elif os.path.isdir(lock_file):
+                                import shutil
+                                shutil.rmtree(lock_file)
+                        except Exception as e:
+                            print(f"⚠️ 清理锁文件失败: {e}")
 
             self.playwright = sync_playwright().start()
             
