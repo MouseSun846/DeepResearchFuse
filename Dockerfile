@@ -14,42 +14,22 @@ ENV PYTHONFAULTHANDLER=1 \
     DEBIAN_FRONTEND=noninteractive
 
 LABEL maintainer="antigravity"
-LABEL description="DeepResearchFuse: Automated research using Playwright"
-LABEL version="1.0"
+LABEL description="DeepResearchFuse: Automated research using Playwright with noVNC"
+LABEL version="1.1"
 
-# Install system dependencies
+# Install system dependencies and VNC stack
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     curl \
     wget \
     gnupg \
     git \
-    && apt-get clean \ 
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Playwright dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libglib2.0-0 \
-    libnss3 \
-    libnspr4 \
-    libatk1.0-0 \
-    libatk-bridge2.0-0 \
-    libcups2 \
-    libdrm2 \
-    libdbus-1-3 \
-    libxcb1 \
-    libxkbcommon0 \
-    libx11-6 \
-    libxcomposite1 \
-    libxdamage1 \
-    libxext6 \
-    libxfixes3 \
-    libxrandr2 \
-    libgbm1 \
-    libpango-1.0-0 \
-    libcairo2 \
-    libasound2 \
-    libatspi2.0-0 \
+    xvfb \
+    x11vnc \
+    novnc \
+    websockify \
+    fluxbox \
+    supervisor \
     && apt-get clean \ 
     && rm -rf /var/lib/apt/lists/*
 
@@ -76,16 +56,26 @@ RUN mkdir -p /home/appuser/.cache/ms-playwright \
 # Copy application code
 COPY . ${APP_HOME}/
 
+# Copy supervisor config
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Create log directory for supervisor
+RUN mkdir -p /var/log/supervisor && chown -R appuser:appuser /var/log/supervisor
+
 # Change ownership of the application directory to the non-root user
 RUN chown -R appuser:appuser ${APP_HOME}
 
 # Switch to the non-root user
 USER appuser
 
-# Set environment variables to production
+# Set environment variables
 ENV PYTHON_ENV=production 
-ENV HEADLESS=true
+ENV HEADLESS=false
+ENV DISPLAY=:99
 ENV HOME=/home/appuser
 
-# Start the application
-CMD ["python", "doubao_research_auto.py"]
+# Expose noVNC port
+EXPOSE 6080
+
+# Start supervisor
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
