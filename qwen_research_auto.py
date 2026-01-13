@@ -21,7 +21,7 @@ class QwenResearchAuto:
         self.page = None
         
         self.setup_driver()
-        self.base_url = "https://www.qianwen.com/"
+        self.base_url = "https://www.qianwen.com/chat/"
 
     def setup_driver(self):
         """设置Playwright驱动"""
@@ -166,6 +166,109 @@ class QwenResearchAuto:
             print(f"⚠️ 登录处理异常: {str(e)}")
             return False
 
+    def input_topic(self):
+        """输入研究主题"""
+        try:
+            print("\n📝 准备输入研究主题...")
+            
+            # 查找并点击 "深度研究" 按钮
+            print("🔍 查找 '深度研究' 按钮...")
+            deep_research_btn = self.page.get_by_text("深度研究", exact=True).first
+            # 也可以尝试: self.page.get_by_role("button", name="深度研究")
+            
+            if deep_research_btn.is_visible():
+                print("🔘 点击 '深度研究' 按钮...")
+                deep_research_btn.click()
+                self.page.wait_for_timeout(2000)
+            else:
+                print("⚠️ 未找到 '深度研究' 按钮，尝试直接输入...")
+
+            # 查找输入框 (class包含 ant-input)
+            print("🔍 查找输入框...")
+            # 使用CSS选择器匹配class包含ant-input的元素
+            input_element = self.page.locator('.ant-input').first
+            
+            if input_element.is_visible():
+                topic = config.RESEARCH_TOPIC
+                print(f"⌨️ 准备输入主题: {topic}")
+                
+                # 模拟人类操作：移动鼠标并点击
+                box = input_element.bounding_box()
+                if box:
+                    # 移动到输入框中心
+                    self.page.mouse.move(box['x'] + box['width'] / 2, box['y'] + box['height'] / 2)
+                    self.page.wait_for_timeout(random.randint(500, 1000))
+                    self.page.mouse.down()
+                    self.page.wait_for_timeout(random.randint(50, 150))
+                    self.page.mouse.up()
+                else:
+                    input_element.click()
+                
+                # 清空输入框 (如果需要)
+                input_element.clear()
+                self.page.wait_for_timeout(random.randint(500, 1000))
+                
+                # 模拟打字输入
+                print(f"⌨️ 正在输入主题 (模拟打字)...")
+                input_element.type(topic, delay=random.randint(50, 150))
+                self.page.wait_for_timeout(random.randint(1000, 2000))
+                
+                # 模拟回车发送
+                print("Go 🚀 发送...")
+                self.page.keyboard.press("Enter")
+                
+                return True
+            else:
+                print("❌ 未找到输入框")
+                return False
+
+        except Exception as e:
+            print(f"❌ 输入主题失败: {str(e)}")
+            return False
+
+    def wait_for_completion(self):
+        """等待研究完成"""
+        try:
+            print("\n⏳ 等待研究完成...")
+            print("🔄 这可能需要较长时间，请耐心等待...")
+            
+            # 定位发送按钮
+            # 查找包含特定icon的按钮容器
+            # 结构: <div class="disabled-xxx operateBtn-xxx"><span data-icon-type="qwpcicon-sendChat">...</span></div>
+            send_btn_selector = 'div[class*="operateBtn-"]:has(span[data-icon-type="qwpcicon-sendChat"])'
+            
+            start_time = time.time()
+            max_wait = 1200  # 20分钟超时
+            
+            while time.time() - start_time < max_wait:
+                send_btn = self.page.locator(send_btn_selector).first
+                
+                if send_btn.is_visible():
+                    # 获取class属性
+                    class_attr = send_btn.get_attribute("class") or ""
+                    
+                    # 检查是否包含 disabled- 前缀的类名
+                    if "disabled-" in class_attr:
+                        # 仍在生成中
+                        elapsed = int(time.time() - start_time)
+                        if elapsed % 30 == 0:
+                            print(f"⏳ 研究进行中... ({elapsed}秒)")
+                    else:
+                        # disabled 类名消失，说明完成
+                        print(f"✅ 研究完成！(总耗时: {int(time.time() - start_time)}秒)")
+                        return True
+                else:
+                    print("⚠️ 未找到发送按钮，可能页面结构发生变化")
+                
+                self.page.wait_for_timeout(2000)
+            
+            print("⚠️ 等待超时，研究可能仍在进行或已失败")
+            return False
+
+        except Exception as e:
+            print(f"⚠️ 等待结果时异常: {str(e)}")
+            return False
+
     def run(self):
         """运行完整流程"""
         success = False
@@ -176,6 +279,8 @@ class QwenResearchAuto:
 
             if not self.visit_page(): return False
             if not self.check_and_handle_login(): return False
+            if not self.input_topic(): return False
+            self.wait_for_completion()
             
             # 这里暂时只实现到登录，后续可以添加研究功能
             print("\n✅ 登录流程执行完毕")
