@@ -92,6 +92,32 @@ class DoubaoResearchAuto:
             print(f"❌ 页面访问失败: {str(e)}")
             return False
 
+    def _capture_qr_code(self, images_dir):
+        """截图二维码并保存到指定目录"""
+        try:
+            # 定位二维码容器
+            qr_container = self.driver.find_element(
+                By.CSS_SELECTOR, 
+                "#semi-modal-body > div > div > div"
+            )
+            
+            if qr_container.is_displayed():
+                # 生成文件名
+                timestamp = time.strftime("%Y%m%d_%H%M%S")
+                qr_path = os.path.join(images_dir, f"qr_code_{timestamp}.png")
+                
+                # 截图并保存
+                qr_container.screenshot(qr_path)
+                print(f"📸 二维码截图已保存: {qr_path}")
+                return qr_path
+            else:
+                print("⚠️ 二维码容器不可见")
+                return None
+        except Exception as e:
+            print(f"⚠️ 二维码截图失败: {str(e)}")
+            return None
+
+
     def check_and_handle_login(self):
         """检查并处理登录"""
         try:
@@ -125,27 +151,112 @@ class DoubaoResearchAuto:
                 print("\n" + "=" * 50)
                 print("🔐 检测到需要登录")
                 print("=" * 50)
-                print("\n请按以下步骤登录：")
-                print("1. 在浏览器中扫描二维码或使用手机号登录")
-                print("2. 登录成功后页面会自动刷新")
-                print("3. 登录完成后，按 Enter 键继续自动化流程")
-                print("\n" + "-" * 50)
 
-                # 等待用户登录
-                input("✋ 登录完成后请按 Enter 键继续...")
-
-                # 等待页面更新
-                print("\n⏳ 确认登录状态...")
-                time.sleep(3)
-
-                # 再次检查登录状态
-                current_url = self.driver.current_url
-                if "doubao.com" in current_url:
-                    print("✅ 登录状态确认成功")
-                    return True
+                # 点击登录按钮
+                login_button = None
+                login_button_strategies = [
+                    "//button[contains(text(), '登录')]",
+                    "//a[contains(text(), '登录')]",
+                    "//span[contains(text(), '登录')]",
+                    "//*[contains(@class, 'login') and (self::button or self::a)]",
+                ]
+                
+                for strategy in login_button_strategies:
+                    try:
+                        elements = self.driver.find_elements(By.XPATH, strategy)
+                        for elem in elements:
+                            if elem.is_displayed() and elem.is_enabled():
+                                login_button = elem
+                                break
+                        if login_button:
+                            break
+                    except:
+                        continue
+                
+                if login_button:
+                    print("🔘 点击登录按钮...")
+                    try:
+                        login_button.click()
+                    except:
+                        self.driver.execute_script("arguments[0].click();", login_button)
+                    time.sleep(3)  # 等待弹窗出现
+                    
+                    # 点击显示二维码按钮
+                    print("🔘 点击显示二维码按钮...")
+                    try:
+                        qr_show_btn = self.driver.find_element(
+                            By.CSS_SELECTOR,
+                            '[data-testid="qrcode_switcher"]'
+                        )
+                        if qr_show_btn.is_displayed():
+                            # 使用 JavaScript 点击，更可靠
+                            self.driver.execute_script("arguments[0].click();", qr_show_btn)
+                            time.sleep(2)  # 等待二维码加载
+                            print("✅ 已点击显示二维码按钮")
+                    except Exception as e:
+                        print(f"⚠️ 点击显示二维码按钮失败: {str(e)}")
                 else:
-                    print("⚠️ 请确认登录成功")
-                    return True
+                    print("⚠️ 未找到登录按钮")
+                
+                # 确保 images 目录存在
+                images_dir = os.path.join(self.workspace_dir, "images")
+                os.makedirs(images_dir, exist_ok=True)
+                
+                # 截图二维码并保存
+                qr_saved = self._capture_qr_code(images_dir)
+                
+                if qr_saved:
+                    print(f"📱 请扫描二维码登录，二维码已保存到: {qr_saved}")
+                
+                # 监控登录状态和二维码失效
+                print("\n⏳ 等待登录完成...")
+                max_wait = 300  # 5分钟超时
+                start_time = time.time()
+                
+                while time.time() - start_time < max_wait:
+                    time.sleep(2)
+                    
+                    # 检查是否登录成功（弹窗消失）
+                    try:
+                        modal = self.driver.find_element(By.CSS_SELECTOR, "#semi-modal-body")
+                        if not modal.is_displayed():
+                            print("✅ 登录成功！")
+                            return True
+                    except:
+                        # 弹窗不存在，可能已登录成功
+                        print("✅ 登录成功！")
+                        return True
+                    
+                    # 检查二维码是否失效
+                    try:
+                        expired_indicator = self.driver.find_element(
+                            By.CSS_SELECTOR, 
+                            "#semi-modal-body div.cover-kIII0c p"
+                        )
+                        if expired_indicator.is_displayed() and "失效" in expired_indicator.text:
+                            print("🔄 二维码已失效，点击刷新...")
+                            
+                            # 点击刷新二维码
+                            refresh_area = self.driver.find_element(
+                                By.CSS_SELECTOR,
+                                "#semi-modal-body div.cover-kIII0c"
+                            )
+                            refresh_area.click()
+                            time.sleep(2)  # 等待新二维码加载
+                            
+                            # 重新截图
+                            qr_saved = self._capture_qr_code(images_dir)
+                            if qr_saved:
+                                print(f"📱 新二维码已保存到: {qr_saved}")
+                    except:
+                        pass  # 没有失效提示，继续等待
+                    
+                    elapsed = int(time.time() - start_time)
+                    if elapsed % 30 == 0:
+                        print(f"⏳ 等待登录中... ({elapsed}秒)")
+                
+                print("⚠️ 登录等待超时")
+                return False
 
             elif "已登录" in login_status:
                 print("✅ 检测到已登录状态")
