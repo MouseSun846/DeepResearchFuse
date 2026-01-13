@@ -575,10 +575,10 @@ if __name__ == "__main__":
     headless_env = os.environ.get("HEADLESS", "false").lower() == "true"
     doubao = DoubaoResearchAuto(headless=headless_env)
     success = doubao.run()
-    print("\n📌 按任意键退出程序...")
-    try:
-        input()
-    except KeyboardInterrupt:
-        pass
+    # print("\n📌 按任意键退出程序...")
+    # try:
+    #     input()
+    # except KeyboardInterrupt:
+    #     pass
     if not success:
         sys.exit(1)
