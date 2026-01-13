@@ -383,16 +383,54 @@ class DoubaoResearchAuto:
         """等待并点击开始研究按钮"""
         try:
             print("\n🔍 等待开始研究按钮出现...")
-            start_btn = self.page.locator("text=直接开始研究, text=立即开始研究, text=开始研究").first
+            # 尝试多种选择器，优先使用 data-testid
+            selectors = [
+                'div[data-testid="suggest_message_item"]',
+                "button:has-text('直接开始研究')",
+            ]
             
-            if start_btn.wait_for(state="visible", timeout=60000):
-                print("🎯 点击'开始研究'按钮...")
-                start_btn.click()
-                print("✅ 成功点击'开始研究'按钮")
-                self.page.wait_for_timeout(2000)
-                return True
+            start_time = time.time()
+            timeout = 60000  # 60秒超时
             
-            print("⚠️ 未找到'开始研究'按钮，可能已经自动开始")
+            while time.time() - start_time < timeout:
+                start_btn = None
+                for selector in selectors:
+                    element = self.page.locator(selector).first
+                    if element.is_visible():
+                        start_btn = element
+                        print(f"✅ 找到按钮，使用选择器: {selector}")
+                        break
+                
+                if start_btn:
+                    print("🎯 点击'开始研究'按钮...")
+                    # 模拟鼠标移动并点击
+                    box = start_btn.bounding_box()
+                    if box:
+                        self.page.mouse.move(box['x'] + box['width'] / 2, box['y'] + box['height'] / 2, steps=5)
+                        self.page.wait_for_timeout(random.randint(200, 500))
+                        self.page.mouse.click(box['x'] + box['width'] / 2, box['y'] + box['height'] / 2)
+                    else:
+                        start_btn.click()
+                    
+                    print("✅ 成功点击'开始研究'按钮")
+                    self.page.wait_for_timeout(2000)
+                    return True
+                
+                # 等待一小段时间后重试
+                self.page.wait_for_timeout(1000)
+            
+            print("⚠️ 未找到'开始研究'按钮，尝试查找页面上所有按钮...")
+            # 调试：打印所有可见按钮文本
+            buttons = self.page.locator("button, div[role='button'], div[data-testid='suggest_message_item']").all()
+            visible_buttons = [btn.text_content() for btn in buttons if btn.is_visible()]
+            print(f"🔘 当前页面可见按钮: {visible_buttons}")
+            
+            # 截图保存现场
+            timestamp = time.strftime("%Y%m%d_%H%M%S")
+            debug_path = os.path.join(self.workspace_dir, "images", f"debug_start_research_{timestamp}.png")
+            self.page.screenshot(path=debug_path)
+            print(f"📸 已保存调试截图: {debug_path}")
+            
             return True
             
         except Exception as e:
