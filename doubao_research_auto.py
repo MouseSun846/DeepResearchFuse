@@ -263,27 +263,27 @@ class DoubaoResearchAuto:
                     expired_indicator = self.page.locator('xpath=//*[@id="semi-modal-body"]/div/div/div/div/div/div[2]/div[1]/div/div[2]')
                     if expired_indicator.is_visible() and "失效" in (expired_indicator.text_content() or ""):
                         print("🔄 二维码已失效，点击刷新...")
-                        # 点击二维码区域刷新
-                        if qr_image.is_visible():
-                            qr_image.click()
-                        else:
-                            # 使用 JS 脚本点击刷新区域
+                        # 直接点击二维码图片区域刷新
+                        try:
+                            # 使用 JS 点击 qrcode_image 元素
                             self.page.evaluate('''
                                 () => {
-                                    const result = document.evaluate(
-                                        '//*[@id="semi-modal-body"]/div/div/div/div/div/div[2]/div[1]/div/div[2]',
-                                        document,
-                                        null,
-                                        XPathResult.FIRST_ORDERED_NODE_TYPE,
-                                        null
-                                    );
-                                    const element = result.singleNodeValue;
-                                    if (element) {
-                                        element.click();
+                                    const qrImage = document.querySelector('[data-testid="qrcode_image"]');
+                                    if (qrImage) {
+                                        qrImage.click();
+                                        console.log("Clicked qrcode_image element");
+                                        return true;
                                     }
+                                    return false;
                                 }
                             ''')
-                        self.page.wait_for_timeout(2000)
+                        except Exception as e:
+                            print(f"⚠️ JS 点击失败: {e}")
+                            # 备用：使用 Playwright 点击
+                            if qr_image.is_visible():
+                                qr_image.click(force=True)
+                        
+                        self.page.wait_for_timeout(3000)  # 等待二维码刷新
                         qr_saved = self._capture_qr_code(images_dir)
                         if qr_saved:
                             print(f"📱 新二维码已保存到: {qr_saved}")
