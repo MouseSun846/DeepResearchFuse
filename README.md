@@ -1,165 +1,82 @@
-# 豆包深度研究自动化脚本
+# 豆包深度研究自动化脚本 (Playwright 版)
 
-这是一个使用 Python Selenium 实现的自动化脚本，用于访问豆包网站并执行深度研究功能。
+这是一个使用 Python Playwright 实现性自动化脚本，用于访问豆包网站并执行深度研究功能。
 
 ## 功能特性
 
 - 🌐 自动打开豆包网站
-- 🔐 登录状态检测与引导
-- 🎯 自动点击"深入研究"功能
+- 🔐 登录状态检测与引导 (支持二维码截图)
+- 🎯 自动点击"深入研究"功能 (通过 "/" 命令)
 - 📝 自动输入研究主题
 - 📤 自动发送研究请求
-- ⏳ 等待研究结果生成
-- 📁 使用指定目录存储浏览器数据（位于 `D:\code\deep_research_fuse\workspace`）
+- ⏳ 等待研究结果生成并自动下载 Markdown 结果
+- 🐳 支持 Docker 容器化运行 (集成 noVNC 可视化)
 
 ## 目录结构
 
 ```
-D:\code\deep_research_fuse\
-├── doubao_research_auto.py     # 增强版本（主要使用）
+.
+├── doubao_research_auto.py     # Playwright 自动化脚本
 ├── config.py                  # 配置文件
-├── run.py                     # 简易启动器
 ├── requirements.txt           # 依赖包列表
+├── Dockerfile                 # Docker 镜像构建文件
+├── supervisord.conf           # Supervisor 进程管理配置
+├── .dockerignore              # Docker 忽略文件
 ├── README.md                  # 说明文档
 └── workspace/                 # 工作区目录
-    ├── chrome_profile/         # Chrome用户数据目录
-    ├── downloads/              # 下载目录
+    ├── chrome_profile/         # 浏览器用户数据 (持久化登录)
+    ├── images/                 # 存储二维码截图
     └── logs/                   # 日志目录
 ```
 
-## 环境要求
+## 本地运行
 
-- Python 3.7+
-- Chrome 浏览器
-- ChromeDriver（与 Chrome 浏览器版本匹配）
-
-## 安装步骤
-
-### 1. 安装 Python 依赖
+### 1. 安装依赖
 
 ```bash
 pip install -r requirements.txt
+playwright install chromium
 ```
 
-### 2. 安装 ChromeDriver
-
-#### 方法一：使用 webdriver-manager（推荐）
+### 2. 运行脚本
 
 ```bash
-pip install webdriver-manager
+python doubao_research_auto.py
 ```
 
-然后修改脚本中的初始化部分：
+## Docker 运行
 
-```python
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
-
-# 替换原来的 webdriver.Chrome()
-driver = webdriver.Chrome(
-    service=Service(ChromeDriverManager().install()),
-    options=chrome_options
-)
-```
-
-#### 方法二：手动下载
-
-1. 查看您的 Chrome 浏览器版本（地址栏输入 `chrome://version`）
-2. 下载对应版本的 ChromeDriver：https://chromedriver.chromium.org/downloads
-3. 将 chromedriver.exe 放在系统 PATH 中或脚本同目录下
-
-## 使用方法
-
-### 运行脚本
+### 1. 构建镜像
 
 ```bash
-python run.py
+docker build -t deepsearchfuse:v1 .
 ```
 
-### 工作区配置
+### 2. 运行容器 (支持 noVNC 可视化)
 
-脚本已配置使用 `D:\code\deep_research_fuse\workspace` 作为工作目录：
+为了保持登录状态并能够通过浏览器查看容器内的操作，请运行以下命令：
 
-- **Chrome 用户数据**：`workspace/chrome_profile/` - 存储浏览器会话、cookies、登录信息等
-- **下载文件**：`workspace/downloads/` - 存储下载的文件
-- **日志文件**：`workspace/logs/` - 存储运行日志（可选）
-
-首次运行时，脚本会自动创建这些目录。Chrome 用户数据目录可以保持登录状态，下次运行时无需重复登录。
-
-### 脚本执行流程
-
-1. ✅ 自动打开豆包网站
-2. 🔍 检查登录状态
-   - 如未登录，提示手动登录后按回车继续
-3. 🎯 在底部菜单栏查找并点击"深入研究"
-4. 📝 自动输入研究主题
-5. 📤 发送研究请求
-6. ⏳ 等待研究结果
-
-### 研究主题
-
-脚本会自动输入以下研究主题：
-
+```bash
+docker run --rm -it --user root --network host --ipc host --init --cap-add=SYS_ADMIN -v ./workspace/chrome_profile:/app/workspace/chrome_profile -v ./workspace/downloads:/data/download  -v ./workspace/images:/app/workspace/images deepsearchfuse:v1
 ```
-调用主流模型厂商提供深入研究功能，有没有这样一款产品，聚合这个功能就是一个输入调研主题分别调用这个模型厂商提供的深度研究能力
-```
+
+### 3. 访问浏览器界面
+
+容器启动后，您可以通过本地浏览器访问以下地址来查看和操作容器内的浏览器：
+
+- **地址**: [http://localhost:6080/vnc.html](http://localhost:6080/vnc.html)
+- **功能**: 您可以在此界面中直接进行扫码登录、查看研究进度等操作。
+
+> [!NOTE]
+> - `/app/workspace/chrome_profile` 是容器内存储浏览器数据的路径。
+> - `/data/download` 是容器内默认的下载路径。
+> - 默认情况下，容器内以 **Headed** 模式运行（通过 Xvfb），因此您可以在 noVNC 中看到浏览器界面。
 
 ## 注意事项
 
-1. **登录要求**：豆包需要登录才能使用深度研究功能，请确保手动完成登录
-2. **网络连接**：确保网络连接稳定
-3. **页面加载**：等待页面完全加载后再继续操作
-4. **反爬虫**：脚本已添加反检测措施，但仍建议不要频繁运行
-
-## 故障排除
-
-### 找不到深入研究按钮
-
-如果脚本无法找到深入研究按钮，可能的原因：
-- 页面结构发生变化
-- 需要先点击其他菜单项才能显示
-
-解决方案：
-- 手动查看页面元素，更新选择器
-- 在脚本中添加更多等待时间
-
-### ChromeDriver 版本不匹配
-
-错误信息：`SessionNotCreatedException: Message: session not created: This version of ChromeDriver only supports Chrome version XX`
-
-解决方案：
-- 更新 ChromeDriver 到匹配版本
-- 或使用 webdriver-manager 自动管理
-
-### 输入框定位失败
-
-如果无法找到输入框：
-- 检查页面是否完全加载
-- 确认是否在正确的聊天页面
-
-## 自定义配置
-
-### 修改研究主题
-
-在 `input_research_topic` 方法中修改 `research_topic` 变量：
-
-```python
-research_topic = "您自定义的研究主题"
-```
-
-### 调整等待时间
-
-可以根据网络情况调整各步骤的等待时间：
-
-```python
-time.sleep(5)  # 增加等待时间
-```
-
-## 安全提示
-
-- 请妥善保管您的登录信息
-- 不要在公共电脑上保存登录状态
-- 脚本仅用于学习和研究目的
+1. **登录要求**：首次运行或 Session 失效时，脚本会截图二维码并保存到 `workspace/images/`。请扫描二维码完成登录。
+2. **Headless 模式**：在 Docker 中运行时默认使用 Headed 模式（通过 VNC 可见）。如果需要纯 Headless 模式，可以设置环境变量 `HEADLESS=true`。
+3. **下载路径**：下载的 Markdown 结果将自动保存到 `SYSTEM_DOWNLOADS_DIR` 配置的路径。
 
 ## 许可证
 
