@@ -344,8 +344,17 @@ class QwenResearchAuto:
             # 重新查找下载按钮
             print("🔍 重新查找下载按钮...")
             download_btns = self.page.locator('span[data-icon-type="qwpcicon-down"]')
-            count = download_btns.count()
             
+            # 等待直到至少有2个下载按钮 (因为最后一个是动态生成的)
+            print("⏳ 等待动态下载按钮生成 (expect count > 1)...")
+            wait_start = time.time()
+            while time.time() - wait_start < 600:
+                count = download_btns.count()
+                if count > 1:
+                    break
+                self.page.wait_for_timeout(1000)
+            
+            count = download_btns.count()
             if count >= 1:
                 download_btn = download_btns.nth(count-1)
                 print(f"🔍 发现 {count} 个下载按钮，选择第 {count} 个 (index {count-1})")
@@ -357,7 +366,7 @@ class QwenResearchAuto:
                 copy_option = self.page.get_by_text("复制为Markdown").first
                 
                 # 尝试多次悬浮以触发弹窗
-                for attempt in range(3):
+                for attempt in range(1000):
                     print(f"🖱️ 悬浮鼠标到下载按钮 (第 {attempt+1} 次尝试)...")
                     download_btn.hover()
                     self.page.wait_for_timeout(5000)

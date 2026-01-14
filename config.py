@@ -30,7 +30,7 @@ LOG_DIR = os.path.join(WORKSPACE_DIR, "logs")
 DOUBAO_URL = "https://www.doubao.com/chat/"
 
 # 研究主题配置
-RESEARCH_TOPIC = "调用主流模型厂商提供深入研究功能，有没有这样一款产品，聚合这个功能就是一个输入调研主题分别调用这个模型厂商提供的深度研究能力，如果我自己要做，前端与后端如何设计？给出方案"
+RESEARCH_TOPIC = "调研最近爆火得skills 有哪些code cli支持?有哪些skills相关聚合网站？如何学习？"
 
 # 浏览器配置
 BROWSER_CONFIG = {
