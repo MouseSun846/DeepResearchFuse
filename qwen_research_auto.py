@@ -122,7 +122,7 @@ class QwenResearchAuto:
                     
                     # 监控登录状态和二维码失效
                     print("\n⏳ 等待登录完成...")
-                    max_wait = 300  # 5分钟超时
+                    max_wait = 7200  # 2小时超时
                     start_time = time.time()
                     
                     while time.time() - start_time < max_wait:
