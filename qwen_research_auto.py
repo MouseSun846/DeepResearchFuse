@@ -289,9 +289,11 @@ class QwenResearchAuto:
         try:
             print("\n💾 准备保存研究结果...")
             
-            # 循环检测结果卡片
+            # 循环检测结果卡片和下载按钮
             check_start_time = time.time()
             check_max_wait = 7200  # 2小时超时
+            
+            download_btn = None
             
             while time.time() - check_start_time < check_max_wait:
                 # 刷新页面
@@ -301,21 +303,23 @@ class QwenResearchAuto:
                 
                 # 检测 data-c="result_card"
                 result_card = self.page.locator('[data-c="result_card"]').first
-                if result_card.is_visible():
-                    print("✅ 检测到结果卡片，准备下载...")
+                
+                # 检测下载按钮
+                download_btn = self.page.locator('span[data-icon-type="qwpcicon-down"]').first
+                
+                if result_card.is_visible() and download_btn.is_visible():
+                    print("✅ 检测到结果卡片和下载按钮，准备下载...")
                     break
                 else:
                     elapsed = int(time.time() - check_start_time)
-                    print(f"⏳ 未检测到结果卡片，30秒后重试... (已等待 {elapsed}秒)")
+                    print(f"⏳ 未同时检测到结果卡片和下载按钮，30秒后重试... (已等待 {elapsed}秒)")
                     self.page.wait_for_timeout(30000)
             else:
-                print("⚠️ 等待结果卡片超时")
+                print("⚠️ 等待结果卡片或下载按钮超时")
                 return False
             
-            # 查找下载图标按钮
-            # data-icon-type="qwpcicon-down"
+            # 此时 download_btn 应该是可见的
             print("🔍 查找下载按钮...")
-            download_btn = self.page.locator('span[data-icon-type="qwpcicon-down"]').first
             
             if download_btn.is_visible():
                 # 移动鼠标到按钮中心
@@ -361,12 +365,13 @@ class QwenResearchAuto:
                             return True
                         else:
                             print("⚠️ 剪贴板为空")
+                            return False 
                     else:
                         print("⚠️ 未找到 '复制为Markdown' 选项")
                 else:
                     print("⚠️ 无法获取下载按钮位置")
             else:
-                print("⚠️ 未找到下载按钮")
+                print("⚠️ 未找到下载按钮 (异常情况)")
                 
             return False
             
