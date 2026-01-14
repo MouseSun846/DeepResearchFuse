@@ -245,10 +245,13 @@ class QwenResearchAuto:
             while time.time() - start_time < max_wait:
                 self.page.wait_for_timeout(5000)
                 
-                # 查找 "终止任务" 按钮
-                stop_btn = self.page.get_by_text("终止任务").first
+                # 查找iframe
+                iframe = self.page.frame_locator("#deep-research-iframe")
                 
-                # 查找 "直接开始研究" 按钮
+                # 在iframe中查找 "终止任务" 按钮
+                stop_btn = iframe.get_by_text("终止任务").first
+                
+                # 查找 "直接开始研究" 按钮 (通常在主页面，但也可能在iframe中，这里先查主页面)
                 start_research_btn = self.page.get_by_text("直接开始研究").first
                 
                 if start_research_btn.is_visible():
