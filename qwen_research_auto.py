@@ -298,14 +298,22 @@ class QwenResearchAuto:
             while time.time() - check_start_time < check_max_wait:
                 # 刷新页面
                 print("🔄 刷新页面...")
-                self.page.reload()
                 self.page.wait_for_timeout(5000)
                 
                 # 检测 data-c="result_card"
                 result_card = self.page.locator('[data-c="result_card"]').first
                 
-                # 检测下载按钮
-                download_btn = self.page.locator('span[data-icon-type="qwpcicon-down"]').first
+                # 检测下载按钮 (取第二个，因为第一个可能是其他的)
+                # 注意：这里假设页面上至少有两个下载图标，且我们需要的是第二个
+                download_btns = self.page.locator('span[data-icon-type="qwpcicon-down"]')
+                count = download_btns.count()
+                
+                if count >= 3:
+                    download_btn = download_btns.nth(2)
+                    print(f"🔍 发现 {count} 个下载按钮，选择第 3 个 (index 2)")
+                else:
+                    download_btn = download_btns.first # Fallback to empty locator
+                    # print("⚠️ 未发现下载按钮") # 后面会统一报未同时检测到
                 
                 if result_card.is_visible() and download_btn.is_visible():
                     print("✅ 检测到结果卡片和下载按钮，准备下载...")
@@ -322,54 +330,51 @@ class QwenResearchAuto:
             print("🔍 查找下载按钮...")
             
             if download_btn.is_visible():
-                # 移动鼠标到按钮中心
-                box = download_btn.bounding_box()
-                if box:
-                    print("🖱️ 移动鼠标到下载按钮...")
-                    self.page.mouse.move(box['x'] + box['width'] / 2, box['y'] + box['height'] / 2)
-                    self.page.wait_for_timeout(2000)
+                # 悬浮触发弹窗
+                print("🖱️ 悬浮鼠标到下载按钮...")
+                download_btn.hover()
+                self.page.wait_for_timeout(2000)
+                
+                # 等待弹窗出现
+                print("⏳ 等待选项弹窗...")
+                # 查找 "复制为Markdown" 选项
+                # 注意：弹窗通常是动态生成的，或者全局只有一个可见的，所以使用 first 并确保可见性
+                copy_option = self.page.get_by_text("复制为Markdown").first
+                
+                if copy_option.is_visible():
+                    print("🔘 点击 '复制为Markdown'...")
+                    copy_option.click()
+                    self.page.wait_for_timeout(1000)
                     
-                    # 等待弹窗出现
-                    print("⏳ 等待选项弹窗...")
-                    # 查找 "复制为Markdown" 选项
-                    copy_option = self.page.get_by_text("复制为Markdown").first
+                    # 获取剪贴板内容
+                    print("📋 读取剪贴板内容...")
+                    content = self.page.evaluate("navigator.clipboard.readText()")
                     
-                    if copy_option.is_visible():
-                        print("🔘 点击 '复制为Markdown'...")
-                        copy_option.click()
-                        self.page.wait_for_timeout(1000)
+                    if content:
+                        # 保存到文件
+                        timestamp = time.strftime("%Y%m%d_%H%M%S")
+                        filename = f"qwen_research_{timestamp}.md"
                         
-                        # 获取剪贴板内容
-                        print("📋 读取剪贴板内容...")
-                        content = self.page.evaluate("navigator.clipboard.readText()")
+                        # 优先使用 SYSTEM_DOWNLOADS_DIR，如果不存在则使用 DOWNLOAD_DIR
+                        save_dir = config.SYSTEM_DOWNLOADS_DIR
+                        if not os.path.exists(save_dir):
+                            try:
+                                os.makedirs(save_dir)
+                            except:
+                                save_dir = config.DOWNLOAD_DIR
+                                os.makedirs(save_dir, exist_ok=True)
                         
-                        if content:
-                            # 保存到文件
-                            timestamp = time.strftime("%Y%m%d_%H%M%S")
-                            filename = f"qwen_research_{timestamp}.md"
-                            
-                            # 优先使用 SYSTEM_DOWNLOADS_DIR，如果不存在则使用 DOWNLOAD_DIR
-                            save_dir = config.SYSTEM_DOWNLOADS_DIR
-                            if not os.path.exists(save_dir):
-                                try:
-                                    os.makedirs(save_dir)
-                                except:
-                                    save_dir = config.DOWNLOAD_DIR
-                                    os.makedirs(save_dir, exist_ok=True)
-                            
-                            filepath = os.path.join(save_dir, filename)
-                            with open(filepath, "w", encoding="utf-8") as f:
-                                f.write(content)
-                            
-                            print(f"✅ 结果已保存到: {filepath}")
-                            return True
-                        else:
-                            print("⚠️ 剪贴板为空")
-                            return False 
+                        filepath = os.path.join(save_dir, filename)
+                        with open(filepath, "w", encoding="utf-8") as f:
+                            f.write(content)
+                        
+                        print(f"✅ 结果已保存到: {filepath}")
+                        return True
                     else:
-                        print("⚠️ 未找到 '复制为Markdown' 选项")
+                        print("⚠️ 剪贴板为空")
+                        return False 
                 else:
-                    print("⚠️ 无法获取下载按钮位置")
+                    print("⚠️ 未找到 '复制为Markdown' 选项")
             else:
                 print("⚠️ 未找到下载按钮 (异常情况)")
                 
