@@ -327,20 +327,50 @@ class QwenResearchAuto:
                 print("⚠️ 等待结果卡片或下载按钮超时")
                 return False
             
-            # 此时 download_btn 应该是可见的
-            print("🔍 查找下载按钮...")
+            # 刷新页面以确保状态最新 (用户请求)
+            print("🔄 刷新页面 (Final Refresh)...")
+            self.page.reload()
+            self.page.wait_for_timeout(5000)
+            
+            # 滚动到底部 (确保懒加载元素出现) - 模拟人类滚动
+            print("📜 滚动到页面底部 (模拟鼠标滚轮)...")
+            # self.page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+            for _ in range(5):
+                self.page.mouse.wheel(0, 1000)
+                self.page.wait_for_timeout(random.randint(500, 1000))
+            
+            self.page.wait_for_timeout(2000)
+
+            # 重新查找下载按钮
+            print("🔍 重新查找下载按钮...")
+            download_btns = self.page.locator('span[data-icon-type="qwpcicon-down"]')
+            count = download_btns.count()
+            
+            if count >= 1:
+                download_btn = download_btns.nth(count-1)
+                print(f"🔍 发现 {count} 个下载按钮，选择第 {count} 个 (index {count-1})")
+            else:
+                download_btn = download_btns.first # Fallback
+                print(f"⚠️ 仅发现 {count} 个下载按钮，选择第 1 个")
             
             if download_btn.is_visible():
-                # 悬浮触发弹窗
-                print("🖱️ 悬浮鼠标到下载按钮...")
-                download_btn.hover()
-                self.page.wait_for_timeout(2000)
-                
-                # 等待弹窗出现
-                print("⏳ 等待选项弹窗...")
-                # 查找 "复制为Markdown" 选项
-                # 注意：弹窗通常是动态生成的，或者全局只有一个可见的，所以使用 first 并确保可见性
                 copy_option = self.page.get_by_text("复制为Markdown").first
+                
+                # 尝试多次悬浮以触发弹窗
+                for attempt in range(3):
+                    print(f"🖱️ 悬浮鼠标到下载按钮 (第 {attempt+1} 次尝试)...")
+                    download_btn.hover()
+                    self.page.wait_for_timeout(5000)
+                    
+                    if copy_option.is_visible():
+                        break
+                    
+                    print("⚠️ 弹窗未出现，尝试移动鼠标重试...")
+                    box = download_btn.bounding_box()
+                    if box:
+                        # 移开鼠标
+                        self.page.mouse.move(box['x'] - 10, box['y'] - 10)
+                        self.page.wait_for_timeout(500)
                 
                 if copy_option.is_visible():
                     print("🔘 点击 '复制为Markdown'...")
