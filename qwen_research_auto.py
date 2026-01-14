@@ -289,10 +289,28 @@ class QwenResearchAuto:
         try:
             print("\n💾 准备保存研究结果...")
             
-            # 刷新页面
-            print("🔄 刷新页面...")
-            self.page.reload()
-            self.page.wait_for_timeout(5000)
+            # 循环检测结果卡片
+            check_start_time = time.time()
+            check_max_wait = 7200  # 2小时超时
+            
+            while time.time() - check_start_time < check_max_wait:
+                # 刷新页面
+                print("🔄 刷新页面...")
+                self.page.reload()
+                self.page.wait_for_timeout(5000)
+                
+                # 检测 data-c="result_card"
+                result_card = self.page.locator('[data-c="result_card"]').first
+                if result_card.is_visible():
+                    print("✅ 检测到结果卡片，准备下载...")
+                    break
+                else:
+                    elapsed = int(time.time() - check_start_time)
+                    print(f"⏳ 未检测到结果卡片，30秒后重试... (已等待 {elapsed}秒)")
+                    self.page.wait_for_timeout(30000)
+            else:
+                print("⚠️ 等待结果卡片超时")
+                return False
             
             # 查找下载图标按钮
             # data-icon-type="qwpcicon-down"
