@@ -309,14 +309,15 @@ class QwenResearchAuto:
                 count = download_btns.count()
                 
                 if count >= 3:
-                    download_btn = download_btns.nth(2)
-                    print(f"🔍 发现 {count} 个下载按钮，选择第 3 个 (index 2)")
+                    download_btn = download_btns.nth(count-1)
+                    print(f"🔍 发现 {count} 个下载按钮，选择第 (index {count-1})")
                 else:
                     download_btn = download_btns.first # Fallback to empty locator
                     # print("⚠️ 未发现下载按钮") # 后面会统一报未同时检测到
-                
-                if result_card.is_visible() and download_btn.is_visible():
-                    print("✅ 检测到结果卡片和下载按钮，准备下载...")
+                print(f"result_card count:{result_card.count()} download_btn visible:{download_btn.is_visible()}")
+                # 用户要求：result_card 只要存在即可，不需要可见 (is_visible要求可见且不被遮挡)
+                if result_card.count() > 0 and download_btn.is_visible():
+                    print("✅ 检测到结果卡片(存在)和下载按钮(可见)，准备下载...")
                     break
                 else:
                     elapsed = int(time.time() - check_start_time)
